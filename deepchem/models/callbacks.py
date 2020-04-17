@@ -2,8 +2,10 @@
 Callback functions that can be invoked while fitting a KerasModel.
 """
 
-import tensorflow as tf
+import logging
 import sys
+import tensorflow as tf
+logger = logging.getLogger(__name__)
 
 
 class ValidationCallback(object):

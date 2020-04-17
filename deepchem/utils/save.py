@@ -10,19 +10,14 @@ import numpy as np
 import os
 import deepchem
 import warnings
+import logging
 from deepchem.utils.genomics import encode_bio_sequence as encode_sequence, encode_fasta_sequence as fasta_sequence, seq_one_hot_encode as seq_one_hotencode
 
-
-def log(string, verbose=True):
-  """Print string if verbose."""
-  if verbose:
-    print(string)
-
+logger = logging.getLogger(__name__)
 
 def save_to_disk(dataset, filename, compress=3):
   """Save a dataset to file."""
   joblib.dump(dataset, filename, compress=compress)
-
 
 def get_input_type(input_file):
   """Get type of input file. Must be csv/pkl.gz/sdf file."""
@@ -52,7 +47,7 @@ def load_data(input_files, shard_size=None, verbose=True):
   input_type = get_input_type(input_files[0])
   if input_type == "sdf":
     if shard_size is not None:
-      log("Ignoring shard_size for sdf input.", verbose)
+      logger.info("Ignoring shard_size for sdf input.")
     for value in load_sdf_files(input_files):
       yield value
   elif input_type == "csv":
@@ -102,10 +97,9 @@ def load_csv_files(filenames, shard_size=None, verbose=True):
     if shard_size is None:
       yield pd.read_csv(filename)
     else:
-      log("About to start loading CSV from %s" % filename, verbose)
+      logger.info("About to start loading CSV from %s" % filename)
       for df in pd.read_csv(filename, chunksize=shard_size):
-        log("Loading shard %d of size %s." % (shard_num, str(shard_size)),
-            verbose)
+        logger.info("Loading shard %d of size %s." % (shard_num, str(shard_size)))
         df = df.replace(np.nan, str(""), regex=True)
         shard_num += 1
         yield df

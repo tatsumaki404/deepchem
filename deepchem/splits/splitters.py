@@ -2,23 +2,19 @@
 Contains an abstract base class that supports chemically aware data splits.
 """
 import random
-
-__author__ = "Bharath Ramsundar, Aneesh Pappu "
-__copyright__ = "Copyright 2016, Stanford University"
-__license__ = "MIT"
-
 import tempfile
 import numpy as np
 import pandas as pd
 import itertools
 import os
 import deepchem as dc
+import logging
 from deepchem.data import DiskDataset
 from deepchem.utils import ScaffoldGenerator
-from deepchem.utils.save import log
 from deepchem.data import NumpyDataset
 from deepchem.utils.save import load_data
 
+logger = logging.getLogger(__name__)
 
 def generate_scaffold(smiles, include_chirality=False):
   """Compute the Bemis-Murcko scaffold for a SMILES string."""
@@ -52,30 +48,19 @@ class Splitter(object):
     """
     Parameters
     ----------
-    dataset: Dataset
-    Dataset to do a k-fold split
-
+    dataset: dc.data.Dataset
+      Dataset to do a k-fold split
     k: int
-    number of folds
-
-    directories: list of str
-    list of length 2*k filepaths to save the result disk-datasets
-
-    kwargs
-
+      number of folds
+    directories: list[str]
+      list of length 2*k filepaths to save the result
+      disk-datasets
     Returns
     -------
     list of length k tuples of (train, cv)
 
     """
-    """
-    :param dataset:
-    :param k:
-    :param directories:
-    :param kwargs:
-    :return: list of length k tuples of (train, cv)
-    """
-    log("Computing K-fold split", self.verbose)
+    logger.info("Computing K-fold split")
     if directories is None:
       directories = [tempfile.mkdtemp() for _ in range(2 * k)]
     else:
@@ -132,7 +117,7 @@ class Splitter(object):
 
         Returns Dataset objects.
         """
-    log("Computing train/valid/test indices", self.verbose)
+    logger.info("Computing train/valid/test indices")
     train_inds, valid_inds, test_inds = self.split(
         dataset,
         seed=seed,
@@ -398,7 +383,7 @@ class RandomStratifiedSplitter(Splitter):
 
   def k_fold_split(self, dataset, k, directories=None, **kwargs):
     """Needs custom implementation due to ragged splits for stratification."""
-    log("Computing K-fold split", self.verbose)
+    logger.info("Computing K-fold split")
     if directories is None:
       directories = [tempfile.mkdtemp() for _ in range(k)]
     else:
@@ -477,7 +462,7 @@ class SingletaskStratifiedSplitter(Splitter):
         fold_datasets: List
           List containing dc.data.Dataset objects
         """
-    log("Computing K-fold split", self.verbose)
+    logger.info("Computing K-fold split")
     if directories is None:
       directories = [tempfile.mkdtemp() for _ in range(k)]
     else:
@@ -809,7 +794,7 @@ class ButinaSplitter(Splitter):
         Setting a small cutoff value will generate smaller, finer clusters of high similarity,
         whereas setting a large cutoff value will generate larger, coarser clusters of low similarity.
         """
-    print("Performing butina clustering with cutoff of", cutoff)
+    logger.info("Performing butina clustering with cutoff of %s" % str(cutoff))
     mols = []
     from rdkit import Chem
     for ind, smiles in enumerate(dataset.ids):
@@ -832,8 +817,8 @@ class ButinaSplitter(Splitter):
       # TODO (Ytz): for regression tasks we'd stop after only one cluster.
       active_populations = np.sum(ys[valid_inds], axis=0)
       if np.all(active_populations):
-        print("# of actives per task in valid:", active_populations)
-        print("Total # of validation points:", len(valid_inds))
+        logger("# of actives per task in valid: %s" % str(active_populations))
+        logger("Total # of validation points: %d" % len(valid_inds))
         break
 
     train_inds = list(itertools.chain.from_iterable(scaffold_sets[c_idx + 1:]))
@@ -864,7 +849,7 @@ class ScaffoldSplitter(Splitter):
     valid_cutoff = (frac_train + frac_valid) * len(dataset)
     train_inds, valid_inds, test_inds = [], [], []
 
-    log("About to sort in scaffold sets", self.verbose)
+    logger.info("About to sort in scaffold sets")
     for scaffold_set in scaffold_sets:
       if len(train_inds) + len(scaffold_set) > train_cutoff:
         if len(train_inds) + len(valid_inds) + len(scaffold_set) > valid_cutoff:
@@ -882,10 +867,10 @@ class ScaffoldSplitter(Splitter):
     scaffolds = {}
     data_len = len(dataset)
 
-    log("About to generate scaffolds", self.verbose)
+    logger.info("About to generate scaffolds")
     for ind, smiles in enumerate(dataset.ids):
       if ind % log_every_n == 0:
-        log("Generating scaffold %d/%d" % (ind, data_len), self.verbose)
+        logger.info("Generating scaffold %d/%d" % (ind, data_len))
       scaffold = generate_scaffold(smiles)
       if scaffold not in scaffolds:
         scaffolds[scaffold] = [ind]

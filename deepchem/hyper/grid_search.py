@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """
 Contains basic hyperparameter optimizations.
 """
@@ -9,10 +7,10 @@ import itertools
 import tempfile
 import shutil
 import collections
+import logging
 from functools import reduce
 from operator import mul
 from deepchem.utils.evaluate import Evaluator
-from deepchem.utils.save import log
 
 
 class HyperparamOpt(object):
@@ -58,20 +56,19 @@ class HyperparamOpt(object):
     for ind, hyperparameter_tuple in enumerate(
         itertools.product(*hyperparam_vals)):
       model_params = {}
-      log("Fitting model %d/%d" % (ind + 1, number_combinations), self.verbose)
+      logger.info("Fitting model %d/%d" % (ind + 1, number_combinations))
       for hyperparam, hyperparam_val in zip(hyperparams, hyperparameter_tuple):
         model_params[hyperparam] = hyperparam_val
-      log("hyperparameters: %s" % str(model_params), self.verbose)
+      logger.info("hyperparameters: %s" % str(model_params))
 
       if logdir is not None:
         model_dir = os.path.join(logdir, str(ind))
-        log("model_dir is %s" % model_dir, self.verbose)
+        logger.info("model_dir is %s" % model_dir)
         try:
           os.makedirs(model_dir)
         except OSError:
           if not os.path.isdir(model_dir):
-            log("Error creating model_dir, using tempfile directory",
-                self.verbose)
+            logger.info("Error creating model_dir, using tempfile directory")
             model_dir = tempfile.mkdtemp()
       else:
         model_dir = tempfile.mkdtemp()
@@ -95,21 +92,19 @@ class HyperparamOpt(object):
       else:
         shutil.rmtree(model_dir)
 
-      log(
+      logger.info(
           "Model %d/%d, Metric %s, Validation set %s: %f" %
-          (ind + 1, number_combinations, metric.name, ind, valid_score),
-          self.verbose)
-      log("\tbest_validation_score so far: %f" % best_validation_score,
-          self.verbose)
+          (ind + 1, number_combinations, metric.name, ind, valid_score))
+      logger.info("\tbest_validation_score so far: %f" % best_validation_score)
     if best_model is None:
-      log("No models trained correctly.", self.verbose)
+      logger.info("No models trained correctly.")
       # arbitrarily return last model
       best_model, best_hyperparams = model, hyperparameter_tuple
       return best_model, best_hyperparams, all_scores
     train_evaluator = Evaluator(best_model, train_dataset, output_transformers)
     multitask_scores = train_evaluator.compute_model_performance([metric])
     train_score = multitask_scores[metric.name]
-    log("Best hyperparameters: %s" % str(best_hyperparams), self.verbose)
-    log("train_score: %f" % train_score, self.verbose)
-    log("validation_score: %f" % best_validation_score, self.verbose)
+    logger.info("Best hyperparameters: %s" % str(best_hyperparams))
+    logger.info("train_score: %f" % train_score)
+    logger.info("validation_score: %f" % best_validation_score)
     return best_model, best_hyperparams, all_scores

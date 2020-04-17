@@ -10,7 +10,7 @@ import numbers
 import tempfile
 import time
 import sys
-from deepchem.utils.save import log
+import logging
 from deepchem.utils.save import load_csv_files
 from deepchem.utils.save import load_sdf_files
 from deepchem.utils.genomics import encode_fasta_sequence
@@ -19,8 +19,10 @@ from deepchem.data import DiskDataset, NumpyDataset, ImageDataset
 import zipfile
 from PIL import Image
 
+logger = logging.getLogger(__name__)
 
-def convert_df_to_numpy(df, tasks, verbose=False):
+
+def _convert_df_to_numpy(df, tasks, verbose=False):
   """Transforms a dataframe containing deepchem input into numpy arrays"""
   n_samples = df.shape[0]
   n_tasks = len(tasks)
@@ -50,12 +52,12 @@ def convert_df_to_numpy(df, tasks, verbose=False):
   return y.astype(float), w.astype(float)
 
 
-def featurize_smiles_df(df, featurizer, field, log_every_N=1000, verbose=True):
+def _featurize_smiles_df(df, featurizer, field, log_every_N=1000, verbose=True):
   """Featurize individual compounds in dataframe.
 
-  Given a featurizer that operates on individual chemical compounds
-  or macromolecules, compute & add features for that compound to the
-  features dataframe
+  Given a featurizer that operates on individual chemical
+  compounds or macromolecules, compute & add features for that
+  compound to the features dataframe
   """
   sample_elems = df[field].tolist()
 
@@ -65,14 +67,15 @@ def featurize_smiles_df(df, featurizer, field, log_every_N=1000, verbose=True):
   from rdkit.Chem import rdmolops
   for ind, elem in enumerate(sample_elems):
     mol = Chem.MolFromSmiles(elem)
-    # TODO (ytz) this is a bandage solution to reorder the atoms so
-    # that they're always in the same canonical order. Presumably this
-    # should be correctly implemented in the future for graph mols.
+    # TODO (ytz) this is a bandage solution to reorder the atoms
+    # so that they're always in the same canonical order.
+    # Presumably this should be correctly implemented in the
+    # future for graph mols.
     if mol:
       new_order = rdmolfiles.CanonicalRankAtoms(mol)
       mol = rdmolops.RenumberAtoms(mol, new_order)
     if ind % log_every_N == 0:
-      log("Featurizing sample %d" % ind, verbose)
+      logger.info("Featurizing sample %d" % ind)
     features.append(featurizer.featurize([mol]))
   valid_inds = np.array(
       [1 if elt.size > 0 else 0 for elt in features], dtype=bool)
@@ -80,7 +83,7 @@ def featurize_smiles_df(df, featurizer, field, log_every_N=1000, verbose=True):
   return np.squeeze(np.array(features), axis=1), valid_inds
 
 
-def featurize_smiles_np(arr, featurizer, log_every_N=1000, verbose=True):
+def _featurize_smiles_np(arr, featurizer, log_every_N=1000, verbose=True):
   """Featurize individual compounds in a numpy array.
 
   Given a featurizer that operates on individual chemical compounds
@@ -97,7 +100,7 @@ def featurize_smiles_np(arr, featurizer, log_every_N=1000, verbose=True):
       new_order = rdmolfiles.CanonicalRankAtoms(mol)
       mol = rdmolops.RenumberAtoms(mol, new_order)
     if ind % log_every_N == 0:
-      log("Featurizing sample %d" % ind, verbose)
+      logger.info("Featurizing sample %d" % ind)
     features.append(featurizer.featurize([mol]))
 
   valid_inds = np.array(
@@ -107,7 +110,7 @@ def featurize_smiles_np(arr, featurizer, log_every_N=1000, verbose=True):
   return features.reshape(-1,)
 
 
-def get_user_specified_features(df, featurizer, verbose=True):
+def _get_user_specified_features(df, featurizer, verbose=True):
   """Extract and merge user specified features.
 
   Merge features included in dataset provided by user
@@ -128,26 +131,25 @@ def get_user_specified_features(df, featurizer, verbose=True):
       pd.to_numeric)
   X_shard = df[featurizer.feature_fields].to_numpy()
   time2 = time.time()
-  log("TIMING: user specified processing took %0.3f s" % (time2 - time1),
-      verbose)
+  logger.info("TIMING: user specified processing took %0.3f s" % (time2 - time1))
   return X_shard
 
 
-def featurize_mol_df(df, featurizer, field, verbose=True, log_every_N=1000):
+def _featurize_mol_df(df, featurizer, field, verbose=True, log_every_N=1000):
   """Featurize individual compounds in dataframe.
 
-  Featurizes .sdf files, so the 3-D structure should be preserved
-  so we use the rdkit "mol" object created from .sdf instead of smiles
-  string. Some featurizers such as CoulombMatrix also require a 3-D
-  structure.  Featurizing from .sdf is currently the only way to
-  perform CM feautization.
+  Featurizes .sdf files, so the 3-D structure should be
+  preserved so we use the rdkit "mol" object created from .sdf
+  instead of smiles string. Some featurizers such as
+  CoulombMatrix also require a 3-D structure.  Featurizing from
+  .sdf is currently the only way to perform CM feautization.
   """
   sample_elems = df[field].tolist()
 
   features = []
   for ind, mol in enumerate(sample_elems):
     if ind % log_every_N == 0:
-      log("Featurizing sample %d" % ind, verbose)
+      logger.info("Featurizing sample %d" % ind)
     features.append(featurizer.featurize([mol]))
   valid_inds = np.array(
       [1 if elt.size > 0 else 0 for elt in features], dtype=bool)
@@ -159,8 +161,10 @@ class DataLoader(object):
   """
   Handles loading/featurizing of chemical samples (datapoints).
 
-  Currently knows how to load csv-files/pandas-dataframes/SDF-files. Writes a
-  dataframe object to disk as output.
+  This is an abstract superclass that provides a general
+  framework for loading data into DeepChem. To load your own
+  type of data, make a subclass of `DataLoader` and implement
+  the private helper methods _get_shards and _featurize_shard.
   """
 
   def __init__(self,
@@ -171,7 +175,23 @@ class DataLoader(object):
                featurizer=None,
                verbose=True,
                log_every_n=1000):
-    """Extracts data from input as Pandas data frame"""
+    """Extracts data from input as Pandas data frame
+
+    Parameters
+    ----------
+    tasks: list[str]
+      List of task names
+    smiles_field: str, optional
+      Name of field that holds smiles string 
+    id_field: str, optional
+      Name of field that holds sample identifier
+    featurizer: dc.feat.Featurizer, optional
+      Featurizer to use to process data
+    verbose: bool, optional
+      Deprecated, ignored field
+    log_every_n: int, optional
+      Writes a logging statement this often.
+    """
     if not isinstance(tasks, list):
       raise ValueError("tasks must be a list.")
     self.verbose = verbose
@@ -198,50 +218,50 @@ class DataLoader(object):
     ----------
     input_files: list
       List of input filenames.
-    data_dir: str
-      (Optional) Directory to store featurized dataset.
-    shard_size: int
-      (Optional) Number of examples stored in each shard.
+    data_dir: str, optional
+      Directory to store featurized dataset.
+    shard_size: int, optional
+      Number of examples stored in each shard.
     """
-    log("Loading raw samples now.", self.verbose)
-    log("shard_size: %d" % shard_size, self.verbose)
+    logger.info("Loading raw samples now.")
+    logger.info("shard_size: %d" % shard_size)
 
     if not isinstance(input_files, list):
       input_files = [input_files]
 
     def shard_generator():
       for shard_num, shard in enumerate(
-          self.get_shards(input_files, shard_size)):
+          self._get_shards(input_files, shard_size)):
         time1 = time.time()
-        X, valid_inds = self.featurize_shard(shard)
+        X, valid_inds = self._featurize_shard(shard)
         ids = shard[self.id_field].values
         ids = ids[valid_inds]
         if len(self.tasks) > 0:
           # Featurize task results iff they exist.
-          y, w = convert_df_to_numpy(shard, self.tasks, self.id_field)
+          y, w = _convert_df_to_numpy(shard, self.tasks, self.id_field)
           # Filter out examples where featurization failed.
           y, w = (y[valid_inds], w[valid_inds])
           assert len(X) == len(ids) == len(y) == len(w)
         else:
-          # For prospective data where results are unknown, it makes
-          # no sense to have y values or weights.
+          # For prospective data where results are unknown, it
+          # makes no sense to have y values or weights.
           y, w = (None, None)
           assert len(X) == len(ids)
 
         time2 = time.time()
-        log(
+        logger.info(
             "TIMING: featurizing shard %d took %0.3f s" %
-            (shard_num, time2 - time1), self.verbose)
+            (shard_num, time2 - time1))
         yield X, y, w, ids
 
     return DiskDataset.create_dataset(
         shard_generator(), data_dir, self.tasks, verbose=self.verbose)
 
-  def get_shards(self, input_files, shard_size):
+  def _get_shards(self, input_files, shard_size):
     """Stub for children classes."""
     raise NotImplementedError
 
-  def featurize_shard(self, shard):
+  def _featurize_shard(self, shard):
     """Featurizes a shard of an input dataframe."""
     raise NotImplementedError
 
@@ -251,13 +271,13 @@ class CSVLoader(DataLoader):
   Handles loading of CSV files.
   """
 
-  def get_shards(self, input_files, shard_size, verbose=True):
+  def _get_shards(self, input_files, shard_size, verbose=True):
     """Defines a generator which returns data for each shard"""
     return load_csv_files(input_files, shard_size, verbose=verbose)
 
-  def featurize_shard(self, shard):
+  def _featurize_shard(self, shard):
     """Featurizes a shard of an input dataframe."""
-    return featurize_smiles_df(shard, self.featurizer, field=self.smiles_field)
+    return _featurize_smiles_df(shard, self.featurizer, field=self.smiles_field)
 
 
 class UserCSVLoader(DataLoader):
@@ -265,14 +285,14 @@ class UserCSVLoader(DataLoader):
   Handles loading of CSV files with user-defined featurizers.
   """
 
-  def get_shards(self, input_files, shard_size):
+  def _get_shards(self, input_files, shard_size):
     """Defines a generator which returns data for each shard"""
     return load_csv_files(input_files, shard_size)
 
-  def featurize_shard(self, shard):
+  def _featurize_shard(self, shard):
     """Featurizes a shard of an input dataframe."""
     assert isinstance(self.featurizer, UserDefinedFeaturizer)
-    X = get_user_specified_features(shard, self.featurizer)
+    X = _get_user_specified_features(shard, self.featurizer)
     return (X, np.ones(len(X), dtype=bool))
 
 
@@ -289,16 +309,16 @@ class SDFLoader(DataLoader):
     self.mol_field = "mol"
     self.id_field = "smiles"
 
-  def get_shards(self, input_files, shard_size):
+  def _get_shards(self, input_files, shard_size):
     """Defines a generator which returns data for each shard"""
     return load_sdf_files(input_files, self.clean_mols, tasks=self.tasks)
 
-  def featurize_shard(self, shard):
+  def _featurize_shard(self, shard):
     """Featurizes a shard of an input dataframe."""
-    log(
+    logger.info(
         "Currently featurizing feature_type: %s" %
-        self.featurizer.__class__.__name__, self.verbose)
-    return featurize_mol_df(shard, self.featurizer, field=self.mol_field)
+        self.featurizer.__class__.__name__)
+    return _featurize_mol_df(shard, self.featurizer, field=self.mol_field)
 
 
 class FASTALoader(DataLoader):
@@ -337,10 +357,10 @@ class ImageLoader(DataLoader):
   """
   Handles loading of image files.
 
-  This class allows for loading of images in various formats. For user
-  convenience, also accepts zip-files and directories of images and uses some
-  limited intelligence to attempt to traverse subdirectories which contain
-  images.
+  This class allows for loading of images in various formats.
+  For user convenience, also accepts zip-files and directories
+  of images and uses some limited intelligence to attempt to
+  traverse subdirectories which contain images.
   """
 
   def __init__(self, tasks=None):

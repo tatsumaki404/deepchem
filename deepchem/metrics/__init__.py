@@ -2,8 +2,8 @@
 
 import numpy as np
 import warnings
-from deepchem.utils.save import log
 import sklearn.metrics
+import logging
 from sklearn.metrics import matthews_corrcoef
 from sklearn.metrics import recall_score
 from sklearn.metrics import r2_score
@@ -16,6 +16,7 @@ from sklearn.metrics import jaccard_similarity_score
 from sklearn.metrics import f1_score
 from scipy.stats import pearsonr
 
+logger = logging.getLogger(__name__)
 
 def to_one_hot(y, n_classes=2):
   """Transforms label vector into one-hot encoding.
@@ -311,7 +312,7 @@ class Metric(object):
 
       metric_value = self.compute_singletask_metric(y_task, y_pred_task, w_task)
       computed_metrics.append(metric_value)
-    log("computed_metrics: %s" % str(computed_metrics), self.verbose)
+    logger.info("computed_metrics: %s" % str(computed_metrics))
     if n_tasks == 1:
       computed_metrics = computed_metrics[0]
     if not self.is_multitask:

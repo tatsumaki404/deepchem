@@ -10,9 +10,11 @@ import scipy.ndimage
 import time
 import deepchem as dc
 import tensorflow as tf
+import logging
 from deepchem.data import NumpyDataset
 from PIL import Image
 
+logger = logging.getLogger(__name__)
 
 def undo_transforms(y, transformers):
   """Undoes all transformations applied."""
@@ -516,8 +518,8 @@ class BalancingTransformer(Transformer):
 
 
 class CDFTransformer(Transformer):
-  """Histograms the data and assigns values based on sorted list."""
-  """Acts like a Cumulative Distribution Function (CDF)."""
+  """Histograms the data and assigns values based on sorted list.
+  Acts like a Cumulative Distribution Function (CDF)."""
 
   def __init__(self, transform_X=False, transform_y=False, dataset=None,
                bins=2):
@@ -540,11 +542,9 @@ class CDFTransformer(Transformer):
     if self.transform_y:
       X_t = X
       y_t = get_cdf_values(y, self.bins)
-      # print("y will not be transformed by CDFTransformer, for now.")
     return NumpyDataset(X_t, y_t, w_t, ids_t)
 
   def untransform(self, z):
-    # print("Cannot undo CDF Transformer, for now.")
     # Need this for transform_y
     if self.transform_y:
       return self.y
@@ -591,7 +591,6 @@ class PowerTransformer(Transformer):
         X_t = np.hstack((X_t, np.power(X, self.powers[i])))
       y_t = y
     if self.transform_y:
-      # print("y will not be transformed by PowerTransformer, for now.")
       y_t = np.power(y, self.powers[0])
       for i in range(1, n_powers):
         y_t = np.hstack((y_t, np.power(y, self.powers[i])))
@@ -605,7 +604,6 @@ class PowerTransformer(Transformer):
     return NumpyDataset(X_t, y_t, w_t, ids_t)
 
   def untransform(self, z):
-    # print("Cannot undo Power Transformer, for now.")
     n_powers = len(self.powers)
     orig_len = (z.shape[1]) // n_powers
     z = z[:, :orig_len]
@@ -838,13 +836,13 @@ class IRVTransformer():
     """
     X_target2 = []
     n_features = X_target.shape[1]
-    print('start similarity calculation')
+    logger.info('start similarity calculation')
     time1 = time.time()
     similarity = IRVTransformer.matrix_mul(X_target, np.transpose(
         self.X)) / (n_features - IRVTransformer.matrix_mul(
             1 - X_target, np.transpose(1 - self.X)))
     time2 = time.time()
-    print('similarity calculation takes %i s' % (time2 - time1))
+    logger.info('similarity calculation takes %i s' % (time2 - time1))
     for i in range(self.n_tasks):
       X_target2.append(self.realize(similarity, self.y[:, i], self.w[:, i]))
     return np.concatenate([z for z in np.array(X_target2)], axis=1)
@@ -1102,7 +1100,7 @@ class ANITransformer(Transformer):
             [self.outputs], feed_dict={self.inputs: X_batch})[0]
         X_out.append(output)
         num_transformed = num_transformed + X_batch.shape[0]
-        print('%i samples transformed' % num_transformed)
+        logger.info('%i samples transformed' % num_transformed)
         start += 1
         if end >= len(X):
           break

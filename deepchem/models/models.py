@@ -1,10 +1,6 @@
 """
 Contains an abstract base class that supports different ML models.
 """
-__author__ = "Bharath Ramsundar and Joseph Gomes"
-__copyright__ = "Copyright 2016, Stanford University"
-__license__ = "MIT"
-
 import sys
 import numpy as np
 import pandas as pd
@@ -13,14 +9,15 @@ import os
 import shutil
 import tempfile
 import sklearn
+import logging
 from sklearn.base import BaseEstimator
-
 from deepchem.data import Dataset, pad_features
 from deepchem.trans import undo_transforms
 from deepchem.utils.save import load_from_disk
 from deepchem.utils.save import save_to_disk
-from deepchem.utils.save import log
 from deepchem.utils.evaluate import Evaluator
+
+logger = logging.getLogger(__name__)
 
 
 class Model(BaseEstimator):
@@ -112,13 +109,12 @@ class Model(BaseEstimator):
     # TODO(rbharath/enf): We need a structured way to deal with potential GPU
     #                     memory overflows.
     for epoch in range(nb_epoch):
-      log("Starting epoch %s" % str(epoch + 1), self.verbose)
+      logger.info("Starting epoch %s" % str(epoch + 1))
       losses = []
       for (X_batch, y_batch, w_batch,
            ids_batch) in dataset.iterbatches(batch_size):
         losses.append(self.fit_on_batch(X_batch, y_batch, w_batch))
-      log("Avg loss for epoch %d: %f" % (epoch + 1, np.array(losses).mean()),
-          self.verbose)
+      logger.info("Avg loss for epoch %d: %f" % (epoch + 1, np.array(losses).mean()))
 
   def predict(self, dataset, transformers=[], batch_size=None):
     """

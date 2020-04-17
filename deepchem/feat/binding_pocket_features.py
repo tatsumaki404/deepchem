@@ -1,14 +1,11 @@
 """
 Featurizes proposed binding pockets.
 """
-__author__ = "Bharath Ramsundar"
-__copyright__ = "Copyright 2017, Stanford University"
-__license__ = "MIT"
-
 import numpy as np
-from deepchem.utils.save import log
+import logging
 from deepchem.feat import Featurizer
 
+logger = logging.getLogger(__name__)
 
 class BindingPocketFeaturizer(Featurizer):
   """
@@ -63,7 +60,7 @@ class BindingPocketFeaturizer(Featurizer):
         # where X is a 1 to 4 digit number
         residue = atom_name[:3]
         if residue not in res_map:
-          log("Warning: Non-standard residue in PDB file", verbose)
+          logger.info("Warning: Non-standard residue in PDB file")
           continue
         atomtype = atom_name.split("-")[1]
         all_features[pocket_num, res_map[residue]] += 1

@@ -10,7 +10,6 @@ import pandas as pd
 import random
 from deepchem.utils.save import save_to_disk, save_metadata
 from deepchem.utils.save import load_from_disk
-from deepchem.utils.save import log
 from pandas import read_hdf
 import tempfile
 import time
@@ -699,7 +698,7 @@ class DiskDataset(Dataset):
     self.data_dir = data_dir
     self.verbose = verbose
 
-    log("Loading dataset from disk.", self.verbose)
+    logger.info("Loading dataset from disk.")
     self.tasks, self.metadata_df = self.load_metadata()
 
   @staticmethod
@@ -731,7 +730,7 @@ class DiskDataset(Dataset):
     metadata_df = DiskDataset._construct_metadata(metadata_rows)
     save_metadata(tasks, metadata_df, data_dir)
     time2 = time.time()
-    log("TIMING: dataset construction took %0.3f s" % (time2 - time1), verbose)
+    logger.info("TIMING: dataset construction took %0.3f s" % (time2 - time1))
     return DiskDataset(data_dir, verbose=verbose)
 
   def load_metadata(self):
@@ -1306,7 +1305,7 @@ class DiskDataset(Dataset):
       X_s = densify_features(X_sparse_s, num_features)
       self.set_shard(i, X_s, y_s, w_s, ids_s)
     time2 = time.time()
-    log("TIMING: sparse_shuffle took %0.3f s" % (time2 - time1), self.verbose)
+    logger.info("TIMING: sparse_shuffle took %0.3f s" % (time2 - time1))
 
   def complete_shuffle(self, data_dir=None):
     """
