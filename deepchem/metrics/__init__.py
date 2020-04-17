@@ -238,7 +238,8 @@ class Metric(object):
       if self.metric.__name__ in [
           "roc_auc_score", "matthews_corrcoef", "recall_score",
           "accuracy_score", "kappa_score", "precision_score",
-          "balanced_accuracy_score", "prc_auc_score", "f1_score"
+          "balanced_accuracy_score", "prc_auc_score", "f1_score",
+          "bedroc_score"
       ]:
         mode = "classification"
       elif self.metric.__name__ in [
