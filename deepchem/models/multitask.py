@@ -20,9 +20,9 @@ class SingletaskToMultitask(Model):
   Warning: This current implementation is only functional for sklearn models.
   """
 
-  def __init__(self, tasks, model_builder, model_dir=None, verbose=True):
+  def __init__(self, tasks, model_builder, model_dir=None):
     super(SingletaskToMultitask, self).__init__(
-        self, model_dir=model_dir, verbose=verbose)
+        self, model_dir=model_dir)
     self.tasks = tasks
     self.task_model_dirs = {}
     self.model_builder = model_builder

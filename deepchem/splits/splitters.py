@@ -40,9 +40,9 @@ class Splitter(object):
     Abstract base class for chemically aware splits..
     """
 
-  def __init__(self, verbose=False):
+  def __init__(self):
     """Creates splitter object."""
-    self.verbose = verbose
+    pass
 
   def k_fold_split(self, dataset, k, directories=None, **kwargs):
     """
@@ -110,13 +110,11 @@ class Splitter(object):
                              frac_test=.1,
                              seed=None,
                              log_every_n=1000,
-                             verbose=True,
                              **kwargs):
-    """
-        Splits self into train/validation/test sets.
+    """Splits self into train/validation/test sets.
 
-        Returns Dataset objects.
-        """
+    Returns Dataset objects for train, valid, test.
+    """
     logger.info("Computing train/valid/test indices")
     train_inds, valid_inds, test_inds = self.split(
         dataset,
@@ -147,12 +145,11 @@ class Splitter(object):
                        test_dir=None,
                        seed=None,
                        frac_train=.8,
-                       verbose=True,
                        **kwargs):
+    """Splits self into train/test sets.
+
+    Returns Dataset objects for train/valid/test.
     """
-        Splits self into train/test sets.
-        Returns Dataset objects.
-        """
     valid_dir = tempfile.mkdtemp()
     train_dataset, _, test_dataset = self.train_valid_test_split(
         dataset,
@@ -163,7 +160,6 @@ class Splitter(object):
         frac_test=1 - frac_train,
         frac_valid=0.,
         seed=seed,
-        verbose=verbose,
         **kwargs)
     return train_dataset, test_dataset
 
@@ -174,7 +170,6 @@ class Splitter(object):
             frac_valid=None,
             frac_test=None,
             log_every_n=None,
-            verbose=False,
             **kwargs):
     """
     Stub to be filled in by child classes.
@@ -415,13 +410,13 @@ class SingletaskStratifiedSplitter(Splitter):
     >>> X = np.random.rand(n_samples, n_features)
     >>> y = np.random.rand(n_samples, n_tasks)
     >>> w = np.ones_like(y)
-    >>> dataset = DiskDataset.from_numpy(np.ones((100,n_tasks)), np.ones((100,n_tasks)), verbose=False)
-    >>> splitter = SingletaskStratifiedSplitter(task_number=5, verbose=False)
+    >>> dataset = DiskDataset.from_numpy(np.ones((100,n_tasks)), np.ones((100,n_tasks)))
+    >>> splitter = SingletaskStratifiedSplitter(task_number=5)
     >>> train_dataset, test_dataset = splitter.train_test_split(dataset)
 
     """
 
-  def __init__(self, task_number=0, verbose=False):
+  def __init__(self, task_number=0):
     """
         Creates splitter object.
 
@@ -429,11 +424,8 @@ class SingletaskStratifiedSplitter(Splitter):
         ----------
         task_number: int (Optional, Default 0)
           Task number for stratification.
-        verbose: bool (Optional, Default False)
-          Controls logging frequency.
         """
     self.task_number = task_number
-    self.verbose = verbose
 
   def k_fold_split(self,
                    dataset,
@@ -714,7 +706,7 @@ class IndiceSplitter(Splitter):
     Class for splits based on input order.
     """
 
-  def __init__(self, verbose=False, valid_indices=None, test_indices=None):
+  def __init__(self, valid_indices=None, test_indices=None):
     """
         Parameters
         -----------
@@ -723,7 +715,6 @@ class IndiceSplitter(Splitter):
         test_indices: list of int
             indices of samples in the test set
         """
-    self.verbose = verbose
     self.valid_indices = valid_indices
     self.test_indices = test_indices
 
@@ -978,11 +969,10 @@ class SpecifiedSplitter(Splitter):
     Class that splits data according to user specification.
     """
 
-  def __init__(self, input_file, split_field, verbose=False):
+  def __init__(self, input_file, split_field):
     """Provide input information for splits."""
     raw_df = next(load_data([input_file], shard_size=None))
     self.splits = raw_df[split_field].values
-    self.verbose = verbose
 
   def split(self,
             dataset,
@@ -1013,13 +1003,12 @@ class SpecifiedIndexSplitter(Splitter):
   Class that splits data according to user index specification
   """
 
-  def __init__(self, train_inds, valid_inds, test_inds, verbose=False):
+  def __init__(self, train_inds, valid_inds, test_inds):
     """Provide input information for splits."""
     self.train_inds = train_inds
     self.valid_inds = valid_inds
     self.test_inds = test_inds
-    self.verbose = verbose
-    super(SpecifiedIndexSplitter, self).__init__(verbose)
+    super(SpecifiedIndexSplitter, self).__init__()
 
   def split(self,
             dataset,
@@ -1027,8 +1016,7 @@ class SpecifiedIndexSplitter(Splitter):
             frac_train=.8,
             frac_valid=.1,
             frac_test=.1,
-            log_every_n=1000,
-            verbose=False):
+            log_every_n=1000):
     """
     Splits internal compounds into train/validation/test by user-specification.
     """
@@ -1037,10 +1025,9 @@ class SpecifiedIndexSplitter(Splitter):
 
 class TimeSplitterPDBbind(Splitter):
 
-  def __init__(self, ids, year_file=None, verbose=False):
+  def __init__(self, ids, year_file=None):
     self.ids = ids
     self.year_file = year_file
-    self.verbose = verbose
 
   def split(self,
             dataset,

@@ -28,7 +28,6 @@ class Model(BaseEstimator):
   def __init__(self,
                model_instance=None,
                model_dir=None,
-               verbose=True,
                **kwargs):
     """Abstract class for all models.
     Parameters:
@@ -48,8 +47,6 @@ class Model(BaseEstimator):
     self.model_dir = model_dir
     self.model_instance = model_instance
     self.model_class = model_instance.__class__
-
-    self.verbose = verbose
 
   def __del__(self):
     if 'model_dir_is_temp' in dir(self) and self.model_dir_is_temp:

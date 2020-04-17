@@ -30,8 +30,7 @@ class BindingPocketFeaturizer(Featurizer):
                 protein_file,
                 pockets,
                 pocket_atoms_map,
-                pocket_coords,
-                verbose=False):
+                pocket_coords):
     """
     Calculate atomic coodinates.
 

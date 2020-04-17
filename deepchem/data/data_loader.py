@@ -22,7 +22,7 @@ from PIL import Image
 logger = logging.getLogger(__name__)
 
 
-def _convert_df_to_numpy(df, tasks, verbose=False):
+def _convert_df_to_numpy(df, tasks):
   """Transforms a dataframe containing deepchem input into numpy arrays"""
   n_samples = df.shape[0]
   n_tasks = len(tasks)
@@ -52,7 +52,7 @@ def _convert_df_to_numpy(df, tasks, verbose=False):
   return y.astype(float), w.astype(float)
 
 
-def _featurize_smiles_df(df, featurizer, field, log_every_N=1000, verbose=True):
+def _featurize_smiles_df(df, featurizer, field, log_every_N=1000):
   """Featurize individual compounds in dataframe.
 
   Given a featurizer that operates on individual chemical
@@ -83,7 +83,7 @@ def _featurize_smiles_df(df, featurizer, field, log_every_N=1000, verbose=True):
   return np.squeeze(np.array(features), axis=1), valid_inds
 
 
-def _featurize_smiles_np(arr, featurizer, log_every_N=1000, verbose=True):
+def _featurize_smiles_np(arr, featurizer, log_every_N=1000):
   """Featurize individual compounds in a numpy array.
 
   Given a featurizer that operates on individual chemical compounds
@@ -110,7 +110,7 @@ def _featurize_smiles_np(arr, featurizer, log_every_N=1000, verbose=True):
   return features.reshape(-1,)
 
 
-def _get_user_specified_features(df, featurizer, verbose=True):
+def _get_user_specified_features(df, featurizer):
   """Extract and merge user specified features.
 
   Merge features included in dataset provided by user
@@ -135,7 +135,7 @@ def _get_user_specified_features(df, featurizer, verbose=True):
   return X_shard
 
 
-def _featurize_mol_df(df, featurizer, field, verbose=True, log_every_N=1000):
+def _featurize_mol_df(df, featurizer, field, log_every_N=1000):
   """Featurize individual compounds in dataframe.
 
   Featurizes .sdf files, so the 3-D structure should be
@@ -173,7 +173,6 @@ class DataLoader(object):
                id_field=None,
                mol_field=None,
                featurizer=None,
-               verbose=True,
                log_every_n=1000):
     """Extracts data from input as Pandas data frame
 
@@ -187,14 +186,11 @@ class DataLoader(object):
       Name of field that holds sample identifier
     featurizer: dc.feat.Featurizer, optional
       Featurizer to use to process data
-    verbose: bool, optional
-      Deprecated, ignored field
     log_every_n: int, optional
       Writes a logging statement this often.
     """
     if not isinstance(tasks, list):
       raise ValueError("tasks must be a list.")
-    self.verbose = verbose
     self.tasks = tasks
     self.smiles_field = smiles_field
     if id_field is None:
@@ -255,7 +251,7 @@ class DataLoader(object):
         yield X, y, w, ids
 
     return DiskDataset.create_dataset(
-        shard_generator(), data_dir, self.tasks, verbose=self.verbose)
+        shard_generator(), data_dir, self.tasks)
 
   def _get_shards(self, input_files, shard_size):
     """Stub for children classes."""
@@ -271,9 +267,9 @@ class CSVLoader(DataLoader):
   Handles loading of CSV files.
   """
 
-  def _get_shards(self, input_files, shard_size, verbose=True):
+  def _get_shards(self, input_files, shard_size):
     """Defines a generator which returns data for each shard"""
-    return load_csv_files(input_files, shard_size, verbose=verbose)
+    return load_csv_files(input_files, shard_size)
 
   def _featurize_shard(self, shard):
     """Featurizes a shard of an input dataframe."""
@@ -326,9 +322,9 @@ class FASTALoader(DataLoader):
   Handles loading of FASTA files.
   """
 
-  def __init__(self, verbose=True):
+  def __init__(self):
     """Initialize loader."""
-    self.verbose = verbose
+    pass
 
   def featurize(self, input_files, data_dir=None):
     """Featurizes fasta files.

@@ -20,7 +20,6 @@ class XGBoostModel(SklearnModel):
   def __init__(self,
                model_instance=None,
                model_dir=None,
-               verbose=False,
                **kwargs):
     """Abstract class for XGBoost models.
     Parameters:
@@ -39,7 +38,6 @@ class XGBoostModel(SklearnModel):
     self.model_instance = model_instance
     self.model_class = model_instance.__class__
 
-    self.verbose = verbose
     if 'early_stopping_rounds' in kwargs:
       self.early_stopping_rounds = kwargs['early_stopping_rounds']
     else:
@@ -76,13 +74,12 @@ class XGBoostModel(SklearnModel):
         y_train,
         early_stopping_rounds=self.early_stopping_rounds,
         eval_metric=xgb_metric,
-        eval_set=[(X_train, y_train), (X_test, y_test)],
-        verbose=self.verbose)
+        eval_set=[(X_train, y_train), (X_test, y_test)])
     # Since test size is 20%, when retrain model to whole data, expect
     # n_estimator increased to 1/0.8 = 1.25 time.
     estimated_best_round = np.round(self.model_instance.best_ntree_limit * 1.25)
     self.model_instance.n_estimators = np.int64(estimated_best_round)
-    self.model_instance.fit(X, y, eval_metric=xgb_metric, verbose=self.verbose)
+    self.model_instance.fit(X, y, eval_metric=xgb_metric)
 
   def _search_param(self, metric, X, y):
     '''

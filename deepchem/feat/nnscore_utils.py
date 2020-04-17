@@ -11,6 +11,7 @@ import subprocess
 import numpy as np
 import deepchem.utils.rdkit_util as rdkit_util
 
+logger = logging.getLogger(__name__)
 
 def force_partial_charge_computation(mol):
   """Force computation of partial charges for molecule.
@@ -41,8 +42,7 @@ def hydrogenate_and_compute_partial_charges(input_file,
                                             input_format,
                                             hyd_output=None,
                                             pdbqt_output=None,
-                                            protein=True,
-                                            verbose=True):
+                                            protein=True):
   """Outputs a hydrogenated pdb and a pdbqt with partial charges.
 
   Takes an input file in specified format. Generates two outputs:
@@ -64,11 +64,9 @@ def hydrogenate_and_compute_partial_charges(input_file,
   """
   mol = rdkit_util.load_molecule(
       input_file, add_hydrogens=True, calc_charges=True)[1]
-  if verbose:
-    logging.info("Create pdb with hydrogens added")
+  logging.info("Create pdb with hydrogens added")
   rdkit_util.write_molecule(mol, str(hyd_output), is_protein=protein)
-  if verbose:
-    logging.info("Create a pdbqt file from the hydrogenated pdb above.")
+  logging.info("Create a pdbqt file from the hydrogenated pdb above.")
   rdkit_util.write_molecule(mol, str(pdbqt_output), is_protein=protein)
 
   if protein:

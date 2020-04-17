@@ -18,9 +18,8 @@ class HyperparamOpt(object):
   Provides simple hyperparameter search capabilities.
   """
 
-  def __init__(self, model_class, verbose=True):
+  def __init__(self, model_class):
     self.model_class = model_class
-    self.verbose = verbose
 
   # TODO(rbharath): This function is complicated and monolithic. Is there a nice
   # way to refactor this?

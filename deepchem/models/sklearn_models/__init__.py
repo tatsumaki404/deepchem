@@ -30,20 +30,17 @@ class SklearnModel(Model):
   def __init__(self,
                model_instance=None,
                model_dir=None,
-               verbose=True,
                **kwargs):
     """
     Parameters
     ----------
     model_instance: sklearn model
     model_dir: str
-    verbose: bool
     kwargs: dict
       kwargs['use_weights'] is a bool which determines if we pass weights into
       self.model_instance.fit()
     """
-    super(SklearnModel, self).__init__(model_instance, model_dir, verbose,
-                                       **kwargs)
+    super(SklearnModel, self).__init__(model_instance, model_dir,**kwargs)
     if 'use_weights' in kwargs:
       self.use_weights = kwargs['use_weights']
     else:

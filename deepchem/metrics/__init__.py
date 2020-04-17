@@ -211,7 +211,6 @@ class Metric(object):
                task_averager=None,
                name=None,
                threshold=None,
-               verbose=True,
                mode=None,
                compute_energy_metric=False):
     """
@@ -232,7 +231,6 @@ class Metric(object):
         self.name = self.task_averager.__name__ + "-" + self.metric.__name__
     else:
       self.name = name
-    self.verbose = verbose
     self.threshold = threshold
     if mode is None:
       if self.metric.__name__ in [

@@ -1,19 +1,28 @@
+"""
+Implement robust multitask classifiers and regressors.
+"""
 import numpy as np
 import tensorflow as tf
 import collections
+import logging
 
 from deepchem.metrics import to_one_hot
 from deepchem.models import KerasModel
 from deepchem.models.layers import Stack
 from deepchem.models.losses import SoftmaxCrossEntropy, L2Loss
 
+logger = logging.getLogger(__name__)
+
 
 class RobustMultitaskClassifier(KerasModel):
   """Implements a neural network for robust multitasking.
 
-  Key idea is to have bypass layers that feed directly from features to task
-  output. Hopefully will allow tasks to route around bad multitasking.
+  The key idea of this model is to have bypass layers that feed
+  directly from features to task output. This might provide some
+  flexibility toroute around challenges in multitasking with
+  destructive interference. This technique is from the paper
 
+  Ramsundar, Bharath, et al. "Is multitask deep learning practical for pharma?." Journal of chemical information and modeling 57.8 (2017): 2068-2076.
   """
 
   def __init__(self,
@@ -194,9 +203,12 @@ class RobustMultitaskClassifier(KerasModel):
 class RobustMultitaskRegressor(KerasModel):
   """Implements a neural network for robust multitasking.
 
-  Key idea is to have bypass layers that feed directly from features to task
-  output. Hopefully will allow tasks to route around bad multitasking.
+  The key idea of this model is to have bypass layers that feed
+  directly from features to task output. This might provide some
+  flexibility toroute around challenges in multitasking with
+  destructive interference. This technique is from the paper
 
+  Ramsundar, Bharath, et al. "Is multitask deep learning practical for pharma?." Journal of chemical information and modeling 57.8 (2017): 2068-2076.
   """
 
   def __init__(self,

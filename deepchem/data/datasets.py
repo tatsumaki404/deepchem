@@ -691,18 +691,17 @@ class DiskDataset(Dataset):
   A Dataset that is stored as a set of files on disk.
   """
 
-  def __init__(self, data_dir, verbose=True):
+  def __init__(self, data_dir):
     """
     Turns featurized dataframes into numpy files, writes them & metadata to disk.
     """
     self.data_dir = data_dir
-    self.verbose = verbose
 
     logger.info("Loading dataset from disk.")
     self.tasks, self.metadata_df = self.load_metadata()
 
   @staticmethod
-  def create_dataset(shard_generator, data_dir=None, tasks=[], verbose=True):
+  def create_dataset(shard_generator, data_dir=None, tasks=[]):
     """Creates a new DiskDataset
 
     Parameters
@@ -731,7 +730,7 @@ class DiskDataset(Dataset):
     save_metadata(tasks, metadata_df, data_dir)
     time2 = time.time()
     logger.info("TIMING: dataset construction took %0.3f s" % (time2 - time1))
-    return DiskDataset(data_dir, verbose=verbose)
+    return DiskDataset(data_dir)
 
   def load_metadata(self):
     try:
@@ -1071,7 +1070,7 @@ class DiskDataset(Dataset):
 
     Example:
 
-    >>> dataset = DiskDataset.from_numpy(np.ones((2,2)), np.ones((2,1)), verbose=False)
+    >>> dataset = DiskDataset.from_numpy(np.ones((2,2)), np.ones((2,1)))
     >>> for x, y, w, id in dataset.itersamples():
     ...   print(x.tolist(), y.tolist(), w.tolist(), id)
     [1.0, 1.0] [1.0] [1.0] 0
@@ -1122,11 +1121,6 @@ class DiskDataset(Dataset):
       out_dir = tempfile.mkdtemp()
     tasks = self.get_task_names()
 
-    if 'verbose' in args:
-      verbose = args['verbose']
-    else:
-      verbose = True
-
     def generator():
       for shard_num, row in self.metadata_df.iterrows():
         X, y, w, ids = self.get_shard(shard_num)
@@ -1134,7 +1128,7 @@ class DiskDataset(Dataset):
         yield (newx, newy, neww, ids)
 
     return DiskDataset.create_dataset(
-        generator(), data_dir=out_dir, tasks=tasks, verbose=verbose)
+        generator(), data_dir=out_dir, tasks=tasks)
 
   def make_pytorch_dataset(self, epochs=1, deterministic=False):
     """Create a torch.utils.data.IterableDataset that iterates over the data in this Dataset.
@@ -1183,8 +1177,7 @@ class DiskDataset(Dataset):
                  w=None,
                  ids=None,
                  tasks=None,
-                 data_dir=None,
-                 verbose=True):
+                 data_dir=None):
     """Creates a DiskDataset object from specified Numpy arrays."""
     n_samples = len(X)
     if ids is None:
@@ -1217,7 +1210,7 @@ class DiskDataset(Dataset):
 
     # raw_data = (X, y, w, ids)
     return DiskDataset.create_dataset(
-        [(X, y, w, ids)], data_dir=data_dir, tasks=tasks, verbose=verbose)
+        [(X, y, w, ids)], data_dir=data_dir, tasks=tasks)
 
   @staticmethod
   def merge(datasets, merge_dir=None):
@@ -1437,7 +1430,7 @@ class DiskDataset(Dataset):
     # Handle edge case with empty indices
     if not len(indices):
       return DiskDataset.create_dataset(
-          [], data_dir=select_dir, verbose=self.verbose)
+          [], data_dir=select_dir)
     indices = np.array(sorted(indices)).astype(int)
     tasks = self.get_task_names()
 
@@ -1474,7 +1467,7 @@ class DiskDataset(Dataset):
           return
 
     return DiskDataset.create_dataset(
-        generator(), data_dir=select_dir, tasks=tasks, verbose=self.verbose)
+        generator(), data_dir=select_dir, tasks=tasks)
 
   @property
   def ids(self):
