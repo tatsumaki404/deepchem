@@ -572,6 +572,7 @@ def compute_hbonds_in_range(protein, protein_xyz, ligand, ligand_xyz,
                             hbond_angle_cutoff):
   """
   Find all pairs of (protein_index_i, ligand_index_j) that hydrogen bond given
+
   a distance bin and an angle cutoff.
   """
 
@@ -591,9 +592,10 @@ def compute_hydrogen_bonds(protein_xyz, protein, ligand_xyz, ligand,
                            hbond_angle_cutoffs):
   """Computes hydrogen bonds between proteins and ligands.
 
-  Returns a list of sublists. Each sublist is a series of tuples of
-  (protein_index_i, ligand_index_j) that represent a hydrogen bond. Each sublist
-  represents a different type of hydrogen bond.
+  Returns a list of sublists. Each sublist is a series of tuples
+  of (protein_index_i, ligand_index_j) that represent a hydrogen
+  bond. Each sublist represents a different type of hydrogen
+  bond.
   """
 
   hbond_contacts = []
@@ -652,26 +654,15 @@ def convert_atom_pair_to_voxel(molecule_xyz_tuple, atom_index_pair, box_width,
 def compute_charge_dictionary(molecule):
   """Create a dictionary with partial charges for each atom in the molecule.
 
-  This function assumes that the charges for the molecule are already
-  computed (it can be done with rdkit_util.compute_charges(molecule))
+  This function assumes that the charges for the molecule are
+  already computed (it can be done with
+  rdkit_util.compute_charges(molecule))
   """
 
   charge_dictionary = {}
   for i, atom in enumerate(molecule.GetAtoms()):
     charge_dictionary[i] = get_partial_charge(atom)
   return charge_dictionary
-
-
-def subtract_centroid(xyz, centroid):
-  """Subtracts centroid from each coordinate.
-
-  Subtracts the centroid, a numpy array of dim 3, from all coordinates of all
-  atoms in the molecule
-  """
-
-  xyz -= np.transpose(centroid)
-  return (xyz)
-
 
 class RdkitGridFeaturizer(ComplexFeaturizer):
   """Featurizes protein-ligand complex using flat features or a 3D grid (in which

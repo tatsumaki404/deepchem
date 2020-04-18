@@ -464,6 +464,15 @@ def compute_centroid(coordinates):
   centroid = np.mean(coordinates, axis=0)
   return (centroid)
 
+def subtract_centroid(xyz, centroid):
+  """Subtracts centroid from each coordinate.
+
+  Subtracts the centroid, a numpy array of dim 3, from all coordinates of all
+  atoms in the molecule
+  """
+  xyz -= np.transpose(centroid)
+  return (xyz)
+
 def compute_ring_center(mol, ring_indices):
   """Computes 3D coordinates of a center of a given ring.
 
