@@ -1,19 +1,48 @@
-import logging
+"""
+RDKit Utilities.
+"""
 
-import numpy as np
 import os
+import logging
+import numpy as np
 
 try:
   from StringIO import StringIO
 except ImportError:
   from io import StringIO
 
+logger = logging.getLogger(__name__)
 
 class MoleculeLoadException(Exception):
 
   def __init__(self, *args, **kwargs):
     Exception.__init__(*args, **kwargs)
 
+
+def compute_pairwise_distances(first_xyz, second_xyz):
+  """Computes pairwise distances between two molecules.
+
+  Takes an input (m, 3) and (n, 3) numpy arrays of 3D coords of
+  protein and ligand, respectively, and outputs an m x n numpy
+  array of pairwise distances in Angstroms between protein and
+  ligand atoms. entry (i,j) is dist between the i"th protein
+  atom and the j"th ligand atom.
+
+  Parameters
+  ----------
+  first_xyz: np.ndarray
+    Of shape (m, 3)
+  seocnd_xyz: np.ndarray
+    Of shape (n, 3)
+
+  Returns
+  -------
+  np.ndarray of shape (m, n)
+  """
+
+  pairwise_distances = cdist(first_xyz, second_xyz,
+                             metric='euclidean')
+  return (pairwise_distances)
 
 def get_xyz_from_mol(mol):
   """
@@ -33,9 +62,17 @@ def get_xyz_from_mol(mol):
 def add_hydrogens_to_mol(mol):
   """
   Add hydrogens to a molecule object
-  TODO (LESWING) see if there are more flags to add here for default
-  :param mol: Rdkit Mol
-  :return: Rdkit Mol
+
+  TODO(rbharath) see if there are more flags to add here for default
+
+  Parameters
+  ----------
+  mol: Rdkit Mol
+    Molecule to hydrogenate
+
+  Returns
+  -------
+  Rdkit Mol
   """
   molecule_file = None
   try:
@@ -69,8 +106,8 @@ def add_hydrogens_to_mol(mol):
 
 
 def compute_charges(mol):
-  """
-  Attempt to compute Gasteiger Charges on Mol
+  """Attempt to compute Gasteiger Charges on Mol
+
   This also has the side effect of calculating charges on mol.
   The mol passed into this function has to already have been sanitized
 
@@ -94,16 +131,26 @@ def compute_charges(mol):
 def load_molecule(molecule_file,
                   add_hydrogens=True,
                   calc_charges=True,
-                  sanitize=False):
-  """
-  Converts molecule file to (xyz-coords, obmol object)
+                  sanitize=True):
+  """Converts molecule file to (xyz-coords, obmol object)
 
   Given molecule_file, returns a tuple of xyz coords of molecule
   and an rdkit object representing that molecule
-  :param molecule_file: filename for molecule
-  :param add_hydrogens: should add hydrogens via pdbfixer?
-  :param calc_charges: should add charges vis rdkit
-  :return: (xyz, mol)
+
+  Parameters
+  ----------
+  molecule_file: str
+    filename for molecule
+  add_hydrogens: bool, optional
+    If true, add hydrogens via pdbfixer
+  calc_charges: bool, optional
+    If true, add charges via rdkit
+  sanitize: bool, optional
+    If true, sanitize molecules via rdkit
+
+  Returns
+  -------
+  Tuple (xyz, mol)
   """
   from rdkit import Chem
   if ".mol2" in molecule_file:
@@ -126,8 +173,6 @@ def load_molecule(molecule_file,
 
   if add_hydrogens or calc_charges:
     my_mol = add_hydrogens_to_mol(my_mol)
-  # TODO: mol should be always sanitized when charges are calculated
-  # can't change it now because it would break a lot of examples
   if sanitize:
     Chem.SanitizeMol(my_mol)
   if calc_charges:
@@ -138,11 +183,15 @@ def load_molecule(molecule_file,
   return xyz, my_mol
 
 
-def pdbqt_file_hack_protein(mol, outfile):
-  """
-  Hack to convert a pdb protein into a pdbqt protein
-  :param mol: rdkit Mol of protein
-  :param outfile: filename which already has a valid pdb representation of mol
+def convert_protein_to_pdbqt(mol, outfile):
+  """Convert a protein PDB file into a pdbqt file.
+
+  Parameters
+  ----------
+  mol: rdkit Mol
+    Protein molecule
+  outfile: str
+    filename which already has a valid pdb representation of mol
   """
   lines = [x.strip() for x in open(outfile).readlines()]
   out_lines = []
@@ -162,21 +211,30 @@ def pdbqt_file_hack_protein(mol, outfile):
       fout.write(line)
 
 
-def pdbqt_file_hack_ligand(mol, outfile):
-  """
-  Hack to convert a pdb ligand into a pdbqt ligand
-  :param mol: rdkit Mol Object
-  :param outfile: filename which already has a valid pdb representation of mol
+def convert_ligand_to_pdbqt(mol, outfile):
+  """Convert a pdb ligand into a pdbqt ligand
+
+  Parameters
+  ----------
+  mol: rdkit Mol
+    Ligand molecule
+  outfile: str
+    filename which already has a valid pdb representation of mol
   """
   PdbqtLigandWriter(mol, outfile).convert()
 
 
 def write_molecule(mol, outfile, is_protein=False):
-  """
-   Write molecule to a file
-  :param mol: rdkit Mol object
-  :param outfile: filename to write mol to
-  :param is_protein: is this molecule a protein?
+  """Write molecule to a file
+
+  Parameters
+  ----------
+  mol: rdkit Mol
+    Molecule to write
+  outfile: str
+    Filename to write mol to
+  is_protein: bool, optional
+    Is this molecule a protein?
   """
   from rdkit import Chem
   if ".pdbqt" in outfile:
@@ -184,9 +242,9 @@ def write_molecule(mol, outfile, is_protein=False):
     writer.write(mol)
     writer.close()
     if is_protein:
-      pdbqt_file_hack_protein(mol, outfile)
+      convert_protein_to_pdbqt(mol, outfile)
     else:
-      pdbqt_file_hack_ligand(mol, outfile)
+      convert_ligand_to_pdbqt(mol, outfile)
   elif ".pdb" in outfile:
     writer = Chem.PDBWriter(outfile)
     writer.write(mol)
@@ -226,8 +284,12 @@ class PdbqtLigandWriter(object):
 
   def __init__(self, mol, outfile):
     """
-    :param mol: The molecule whose value is stored in pdb format in outfile
-    :param outfile: a valid pdb file with the extention .pdbqt
+    Parameters
+    ----------
+    mol: rdkit Mol
+      The molecule whose value is stored in pdb format in outfile
+    outfile: str
+      Filename for a valid pdb file with the extention .pdbqt
     """
     self.mol = mol
     self.outfile = outfile
@@ -319,10 +381,14 @@ class PdbqtLigandWriter(object):
     return self.pdb_map[atom_number]
 
   def _create_component_map(self, components):
-    """
-    Creates a Map From atom_idx to disconnected_component_id
-    :param components:
-    :return:
+    """Creates a Map From atom_idx to disconnected_component_id
+
+    Sets self.comp_map to the computed compnent map.
+
+    Parameters
+    ----------
+    components: list
+      List of connected components
     """
     comp_map = {}
     for i in range(self.mol.GetNumAtoms()):
@@ -333,13 +399,13 @@ class PdbqtLigandWriter(object):
     self.comp_map = comp_map
 
   def _create_pdb_map(self):
-    """
-    create self.pdb_map.  This is a map from rdkit atom number to
-    its line in the pdb file.  We also add the two additional columns
-    required for pdbqt (charge, symbol)
+    """Create self.pdb_map.
+
+    This is a map from rdkit atom number to its line in the pdb
+    file. We also add the two additional columns required for
+    pdbqt (charge, symbol)
 
     note rdkit atoms are 0 indexes and pdb files are 1 indexed
-    :return:
     """
     lines = [x.strip() for x in open(self.outfile).readlines()]
     lines = filter(lambda x: x.startswith("HETATM") or x.startswith("ATOM"),
@@ -388,3 +454,119 @@ class PdbqtLigandWriter(object):
         "[CH3])]")
     rdmolops.FastFindRings(self.mol)
     self.rotatable_bonds = self.mol.GetSubstructMatches(pattern)
+
+def compute_centroid(coordinates):
+  """Compute the x,y,z centroid of provided coordinates
+
+  coordinates: np.ndarray
+    Shape (N, 3), where N is number atoms.
+  """
+  centroid = np.mean(coordinates, axis=0)
+  return (centroid)
+
+def compute_ring_center(mol, ring_indices):
+  """Computes 3D coordinates of a center of a given ring.
+
+  Parameters:
+  -----------
+  mol: rdkit.rdchem.Mol
+    Molecule containing a ring
+  ring_indices: array-like
+    Indices of atoms forming a ring
+
+  Returns:
+  --------
+    ring_centroid: np.ndarray
+      Position of a ring center
+  """
+  conformer = mol.GetConformer()
+  ring_xyz = np.zeros((len(ring_indices), 3))
+  for i, atom_idx in enumerate(ring_indices):
+    atom_position = conformer.GetAtomPosition(atom_idx)
+    ring_xyz[i] = np.array(atom_position)
+  ring_centroid = compute_centroid(ring_xyz)
+  return ring_centroid
+ 
+def compute_ring_normal(mol, ring_indices):
+  """Computes normal to a plane determined by a given ring.
+
+  Parameters:
+  -----------
+  mol: rdkit.rdchem.Mol
+    Molecule containing a ring
+  ring_indices: array-like
+    Indices of atoms forming a ring
+
+  Returns:
+  --------
+  normal: np.ndarray
+    Normal vector
+  """
+  conformer = mol.GetConformer()
+  points = np.zeros((3, 3))
+  for i, atom_idx in enumerate(ring_indices[:3]):
+    atom_position = conformer.GetAtomPosition(atom_idx)
+    points[i] = np.array(atom_position)
+
+  v1 = points[1] - points[0]
+  v2 = points[2] - points[0]
+  normal = np.cross(v1, v2)
+  return normal
+
+def rotate_molecules(mol_coordinates_list):
+  """Rotates provided molecular coordinates.
+
+  Pseudocode:
+  1. Generate random rotation matrix. This matrix applies a
+     random transformation to any 3-vector such that, were the
+     random transformation repeatedly applied, it would randomly
+     sample along the surface of a sphere with radius equal to
+     the norm of the given 3-vector cf.
+     generate_random_rotation_matrix() for details
+  2. Apply R to all atomic coordinates.
+  3. Return rotated molecule
+
+  Parameters
+  ----------
+  mol_coordinates_list: list
+    Elements of list must be (N_atoms, 3) shaped arrays
+  """
+  R = generate_random_rotation_matrix()
+  rotated_coordinates_list = []
+
+  for mol_coordinates in mol_coordinates_list:
+    coordinates = deepcopy(mol_coordinates)
+    rotated_coordinates = np.transpose(np.dot(R, np.transpose(coordinates)))
+    rotated_coordinates_list.append(rotated_coordinates)
+
+  return (rotated_coordinates_list)
+
+def get_partial_charge(atom):
+  """Get partial charge of a given atom (rdkit Atom object)"""
+  try:
+    value = atom.GetProp(str("_GasteigerCharge"))
+    if value == '-nan':
+      return 0
+    return float(value)
+  except KeyError:
+    return 0
+
+def is_salt_bridge(atom_i, atom_j):
+  """Check if two atoms have correct charges to form a salt bridge"""
+  if np.abs(2.0 - np.abs(
+      get_partial_charge(atom_i) - get_partial_charge(atom_j))) < 0.01:
+    return True
+  return False
+
+def is_hydrogen_bond(protein_xyz,
+                     protein,
+                     ligand_xyz,
+                     ligand,
+                     contact,
+                     hbond_angle_cutoff):
+  """
+  Determine if a pair of atoms (contact = tuple of protein_atom_index, ligand_atom_index)
+  between protein and ligand represents a hydrogen bond. Returns a boolean result.
+  """
+  # TODO(rbharath)
+  return False

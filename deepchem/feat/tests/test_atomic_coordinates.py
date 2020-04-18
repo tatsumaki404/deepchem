@@ -10,7 +10,7 @@ from deepchem.feat.atomic_coordinates import get_coords
 from deepchem.feat.atomic_coordinates import AtomicCoordinates
 from deepchem.feat.atomic_coordinates import NeighborListAtomicCoordinates
 from deepchem.feat.atomic_coordinates import NeighborListComplexAtomicCoordinates
-from deepchem.feat.atomic_coordinates import ComplexNeighborListFragmentAtomicCoordinates
+from deepchem.feat.atomic_coordinates import AtomicConvFeaturizer 
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +159,7 @@ class TestAtomicCoordinates(unittest.TestCase):
       assert len(system_neighbor_list[atom]) <= max_num_neighbors
 
   def test_full_complex_featurization(self):
-    """Unit test for ComplexNeighborListFragmentAtomicCoordinates."""
+    """Unit test for AtomicConvFeaturizer."""
     dir_path = os.path.dirname(os.path.realpath(__file__))
     ligand_file = os.path.join(dir_path, "data/3zso_ligand_hyd.pdb")
     protein_file = os.path.join(dir_path, "data/3zso_protein.pdb")
@@ -171,7 +171,7 @@ class TestAtomicCoordinates(unittest.TestCase):
     max_num_neighbors = 4
     # Cutoff in angstroms
     neighbor_cutoff = 4
-    complex_featurizer = ComplexNeighborListFragmentAtomicCoordinates(
+    complex_featurizer = AtomicConvFeaturizer(
         frag1_num_atoms, frag2_num_atoms, complex_num_atoms, max_num_neighbors,
         neighbor_cutoff)
     (frag1_coords, frag1_neighbor_list, frag1_z, frag2_coords,
