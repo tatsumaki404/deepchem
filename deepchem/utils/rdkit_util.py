@@ -191,7 +191,6 @@ def load_molecule(molecule_file,
 
   return xyz, my_mol
 
-
 def convert_protein_to_pdbqt(mol, outfile):
   """Convert a protein PDB file into a pdbqt file.
 
