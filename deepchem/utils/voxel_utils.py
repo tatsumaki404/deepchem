@@ -11,6 +11,8 @@ def convert_atom_to_voxel(molecule_xyz,
                           voxel_width):
   """Converts atom coordinates to an i,j,k grid index.
 
+  TODO(rbharath): Why does this make sense? It offsets the molecule atom coordinates by (box_width/2, box_width/2, box_width/2). Shouldn't there be a box center specified? Well, I guess if you're at 0,0,0, then you're shifted to the center of the voxel box.
+
   Parameters:
   -----------
   molecule_xyz: np.ndarray
@@ -48,36 +50,6 @@ def convert_atom_pair_to_voxel(molecule_xyz_tuple, atom_index_pair, box_width,
   return (indices_list)
 
 
-def convert_atom_pair_to_voxel(molecule_xyz_tuple, atom_index_pair, box_width,
-                               voxel_width):
-  """Converts a pair of atoms to a list of i,j,k tuples."""
-
-  indices_list = []
-  indices_list.append(
-      convert_atom_to_voxel(molecule_xyz_tuple[0], atom_index_pair[0],
-                            box_width, voxel_width)[0])
-  indices_list.append(
-      convert_atom_to_voxel(molecule_xyz_tuple[1], atom_index_pair[1],
-                            box_width, voxel_width)[0])
-  return (indices_list)
-
-
-def convert_atom_pair_to_voxel(molecule_xyz_tuple, atom_index_pair, box_width,
-                               voxel_width):
-  """Converts a pair of atoms to a list of i,j,k tuples."""
-
-  indices_list = []
-  indices_list.append(
-      convert_atom_to_voxel(molecule_xyz_tuple[0], atom_index_pair[0],
-                            box_width, voxel_width)[0])
-  indices_list.append(
-      convert_atom_to_voxel(molecule_xyz_tuple[1], atom_index_pair[1],
-                            box_width, voxel_width)[0])
-  return (indices_list)
-
-
-
-
 def voxelize(get_voxels,
              voxels_per_edge,
              box_width,
@@ -93,7 +65,6 @@ def voxelize(get_voxels,
   This helper function helps convert a hash function which
   specifies spatial features of a molecular complex into a voxel
   tensor.
-
   Parameters
   ----------
   get_voxels: function
@@ -124,11 +95,6 @@ def voxelize(get_voxels,
   Tensor of shape (voxels_per_edge, voxels_per_edge,
   voxels_per_edge, nb_channel),
   """
-  #if channel_power is not None:
-  #  if channel_power == 0:
-  #    nb_channel = 1
-  #  else:
-  #    nb_channel = int(2**channel_power)
   if dtype == "np.int8":
     feature_tensor = np.zeros(
         (voxels_per_edge, voxels_per_edge, voxels_per_edge,
