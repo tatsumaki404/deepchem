@@ -19,6 +19,8 @@ from collections import Counter
 from scipy.spatial.distance import cdist
 from deepchem.utils.geometry_utils import angle_between
 from deepchem.utils.geometry_utils import generate_random_rotation_matrix
+from rdkit import Chem
+from rdkit.Chem.rdchem import AtomValenceException
 
 logger = logging.getLogger(__name__)
 
@@ -183,7 +185,10 @@ def load_molecule(molecule_file,
   if add_hydrogens or calc_charges:
     my_mol = add_hydrogens_to_mol(my_mol)
   if sanitize:
-    Chem.SanitizeMol(my_mol)
+    try:
+      Chem.SanitizeMol(my_mol)
+    except AtomValenceException:
+      logger.warn("Mol %s failed valence check" % Chem.MolToSmiles(my_mol))
   if calc_charges:
     compute_charges(my_mol)
 
@@ -599,6 +604,7 @@ def is_salt_bridge(atom_i, atom_j):
     return True
   return False
 
+
 def is_hydrogen_bond(protein_xyz,
                      protein,
                      ligand_xyz,
@@ -639,15 +645,50 @@ def is_hydrogen_bond(protein_xyz,
 
     for hydrogen_xyz in hydrogens:
       hydrogen_to_ligand = ligand_atom_xyz - hydrogen_xyz
-      hydrogen_to_protein = protein_atom_xyz - hydrogen_xyzh
-      if math.abs(180 - angle_between(hydrogen_to_protein, hydrogen_to_ligand) * 180.0 / np.pi) <= hbond_angle_cutoff:
+      hydrogen_to_protein = protein_atom_xyz - hydrogen_xyz
+      if np.abs(180 - angle_between(hydrogen_to_protein, hydrogen_to_ligand) * 180.0 / np.pi) <= hbond_angle_cutoff:
         return True
   return False
-        
-      
 
-  # TODO(rbharath)
-  return False
+
+def compute_hbonds_in_range(protein, protein_xyz, ligand, ligand_xyz,
+                            pairwise_distances, hbond_dist_bin,
+                            hbond_angle_cutoff):
+  """
+  Find all pairs of (protein_index_i, ligand_index_j) that hydrogen bond given
+
+  a distance bin and an angle cutoff.
+  """
+
+  contacts = np.nonzero((pairwise_distances > hbond_dist_bin[0]) &
+                        (pairwise_distances < hbond_dist_bin[1]))
+  contacts = zip(contacts[0], contacts[1])
+  hydrogen_bond_contacts = []
+  for contact in contacts:
+    if is_hydrogen_bond(protein_xyz, protein, ligand_xyz, ligand, contact,
+                        hbond_angle_cutoff):
+      hydrogen_bond_contacts.append(contact)
+  return hydrogen_bond_contacts
+
+def compute_hydrogen_bonds(protein_xyz, protein, ligand_xyz, ligand,
+                           pairwise_distances, hbond_dist_bins,
+                           hbond_angle_cutoffs):
+  """Computes hydrogen bonds between proteins and ligands.
+
+  Returns a list of sublists. Each sublist is a series of tuples
+  of (protein_index_i, ligand_index_j) that represent a hydrogen
+  bond. Each sublist represents a different type of hydrogen
+  bond.
+  """
+
+  hbond_contacts = []
+  for i, hbond_dist_bin in enumerate(hbond_dist_bins):
+    hbond_angle_cutoff = hbond_angle_cutoffs[i]
+    hbond_contacts.append(
+        compute_hbonds_in_range(protein, protein_xyz, ligand, ligand_xyz,
+                                pairwise_distances, hbond_dist_bin,
+                                hbond_angle_cutoff))
+  return (hbond_contacts)
 
 def compute_salt_bridges(first,
                          second,
