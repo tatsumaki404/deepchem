@@ -83,31 +83,31 @@ def _featurize_smiles_df(df, featurizer, field, log_every_N=1000):
   return np.squeeze(np.array(features), axis=1), valid_inds
 
 
-def _featurize_smiles_np(arr, featurizer, log_every_N=1000):
-  """Featurize individual compounds in a numpy array.
-
-  Given a featurizer that operates on individual chemical compounds
-  or macromolecules, compute & add features for that compound to the
-  features array
-  """
-  features = []
-  from rdkit import Chem
-  from rdkit.Chem import rdmolfiles
-  from rdkit.Chem import rdmolops
-  for ind, elem in enumerate(arr.tolist()):
-    mol = Chem.MolFromSmiles(elem)
-    if mol:
-      new_order = rdmolfiles.CanonicalRankAtoms(mol)
-      mol = rdmolops.RenumberAtoms(mol, new_order)
-    if ind % log_every_N == 0:
-      logger.info("Featurizing sample %d" % ind)
-    features.append(featurizer.featurize([mol]))
-
-  valid_inds = np.array(
-      [1 if elt.size > 0 else 0 for elt in features], dtype=bool)
-  features = [elt for (is_valid, elt) in zip(valid_inds, features) if is_valid]
-  features = np.squeeze(np.array(features))
-  return features.reshape(-1,)
+#def _featurize_smiles_np(arr, featurizer, log_every_N=1000):
+#  """Featurize individual compounds in a numpy array.
+#
+#  Given a featurizer that operates on individual chemical compounds
+#  or macromolecules, compute & add features for that compound to the
+#  features array
+#  """
+#  features = []
+#  from rdkit import Chem
+#  from rdkit.Chem import rdmolfiles
+#  from rdkit.Chem import rdmolops
+#  for ind, elem in enumerate(arr.tolist()):
+#    mol = Chem.MolFromSmiles(elem)
+#    if mol:
+#      new_order = rdmolfiles.CanonicalRankAtoms(mol)
+#      mol = rdmolops.RenumberAtoms(mol, new_order)
+#    if ind % log_every_N == 0:
+#      logger.info("Featurizing sample %d" % ind)
+#    features.append(featurizer.featurize([mol]))
+#
+#  valid_inds = np.array(
+#      [1 if elt.size > 0 else 0 for elt in features], dtype=bool)
+#  features = [elt for (is_valid, elt) in zip(valid_inds, features) if is_valid]
+#  features = np.squeeze(np.array(features))
+#  return features.reshape(-1,)
 
 
 def _get_user_specified_features(df, featurizer):
@@ -158,13 +158,26 @@ def _featurize_mol_df(df, featurizer, field, log_every_N=1000):
 
 
 class DataLoader(object):
-  """
-  Handles loading/featurizing of chemical samples (datapoints).
+  """Handles loading/featurizing of data from disk.
 
-  This is an abstract superclass that provides a general
-  framework for loading data into DeepChem. To load your own
-  type of data, make a subclass of `DataLoader` and implement
-  the private helper methods _get_shards and _featurize_shard.
+  The `Featurizer` objects can featurize provided input into
+  numpy arrays alread but don't generate `Dataset` objects. You
+  can of course wrap numpy arrays into `Dataset` objects with
+  `dc.data.NumpyDataset`, but you might face some difficulty
+  with larger files on disk. The main use of `DataLoader` and
+  its child classes is to make it easier to load large datasets
+  into `Dataset` objects.` You won't ever "need" to use a
+  `DataLoader` but might often find it convenient when
+  processing larger datasets.
+
+  Note that `DataLoader` is an abstract superclass that
+  provides a general framework for loading data into DeepChem.
+  To load your own type of data, make a subclass of
+  `DataLoader` and provide your own implementation for
+  `featurize`. You can choose to use some of the default
+  infrastructure by  implementing private helper methods
+  _get_shards and _featurize_shard that demonstrate how to
+  handle a single "shard" of data.
   """
 
   def __init__(self,
