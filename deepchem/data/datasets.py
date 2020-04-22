@@ -8,20 +8,18 @@ import deepchem as dc
 import numpy as np
 import pandas as pd
 import random
-from deepchem.utils.save import save_to_disk, save_metadata
-from deepchem.utils.save import load_from_disk
+import logging
 from pandas import read_hdf
 import tempfile
 import time
 import shutil
 import json
-from multiprocessing.dummy import Pool
 import warnings
+from multiprocessing.dummy import Pool
+from deepchem.utils.save import save_to_disk, save_metadata
+from deepchem.utils.save import load_from_disk
 
-__author__ = "Bharath Ramsundar"
-__copyright__ = "Copyright 2016, Stanford University"
-__license__ = "MIT"
-
+logger = logging.getLogger(__name__)
 
 def sparsify_features(X):
   """Extracts a sparse feature representation from dense feature array."""
