@@ -5,6 +5,7 @@ import logging
 import numpy as np
 import tempfile
 import os
+import deepchem
 from deepchem.hyper.grid_search import HyperparamOpt
 from deepchem.utils.evaluate import Evaluator
 from deepchem.molnet.run_benchmark_models import benchmark_classification, benchmark_regression
@@ -52,9 +53,9 @@ class GaussianProcessHyperparamOpt(HyperparamOpt):
     params_dict: dict
       dict including parameters and their initial values
       parameters not suitable for optimization can be added to hp_invalid_list
-    train_dataset: dc.data.Dataset struct
+    train_dataset: `dc.data.Dataset`
       dataset used for training
-    valid_dataset: dc.data.Dataset struct
+    valid_dataset: `dc.data.Dataset`
       dataset used for validation(optimization on valid scores)
     output_transformers: list of dc.trans.Transformer
       transformers for evaluation
@@ -86,6 +87,10 @@ class GaussianProcessHyperparamOpt(HyperparamOpt):
     """
 
     assert len(metric) == 1, 'Only use one metric'
+    #######################################################
+    print("params_dict")
+    print(params_dict)
+    #######################################################
     hyper_parameters = params_dict
     hp_list = list(hyper_parameters.keys())
     for hp in hp_invalid_list:
@@ -136,7 +141,7 @@ class GaussianProcessHyperparamOpt(HyperparamOpt):
     param_name = ['l' + format(i, '02d') for i in range(20)]
     param = dict(zip(param_name[:n_param], param_range))
 
-    data_dir = os.environ['DEEPCHEM_DATA_DIR']
+    data_dir = deepchem.utils.get_data_dir()
     log_file = os.path.join(data_dir, log_file)
 
     def f(l00=0,
@@ -186,7 +191,7 @@ class GaussianProcessHyperparamOpt(HyperparamOpt):
             float(args[param_name[j]]) for j in range(i, i + hp[1])
         ]
         if param_range[i][0] == 'int':
-          hyper_parameters[hp[0]] = map(int, hyper_parameters[hp[0]])
+          hyper_parameters[hp[0]] = list(map(int, hyper_parameters[hp[0]]))
         i = i + hp[1]
 
       logger.info(hyper_parameters)
@@ -262,7 +267,7 @@ class GaussianProcessHyperparamOpt(HyperparamOpt):
           float(hp_opt[param_name[j]]) for j in range(i, i + hp[1])
       ]
       if param_range[i][0] == 'int':
-        hyper_parameters[hp[0]] = map(int, hyper_parameters[hp[0]])
+        hyper_parameters[hp[0]] = list(map(int, hyper_parameters[hp[0]]))
       i = i + hp[1]
 
     # Compare best model to default hyperparameters

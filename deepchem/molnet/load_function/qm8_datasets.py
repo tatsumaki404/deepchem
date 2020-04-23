@@ -98,8 +98,6 @@ def load_qm8(featurizer='CoulombMatrix',
           graph_distance=False, explicit_H=True)
     loader = deepchem.data.SDFLoader(
         tasks=qm8_tasks,
-        smiles_field="smiles",
-        mol_field="mol",
         featurizer=featurizer)
   else:
     if featurizer == 'ECFP':

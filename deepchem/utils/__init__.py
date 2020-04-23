@@ -140,9 +140,9 @@ class ScaffoldGenerator(object):
     """
     Get Murcko scaffolds for molecules.
 
-    Murcko scaffolds are described in DOI: 10.1021/jm9602928. They are
-    essentially that part of the molecule consisting of rings and the
-    linker atoms between them.
+    Murcko scaffolds are described in DOI: 10.1021/jm9602928.
+    They are essentially that part of the molecule consisting of
+    rings and the linker atoms between them.
 
     Parameters
     ----------

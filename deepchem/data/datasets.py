@@ -172,6 +172,13 @@ class Dataset(object):
     """Get the weight vector for this dataset as a single numpy array."""
     raise NotImplementedError()
 
+  # TODO(rbharath): Update based on discussion in https://github.com/deepchem/deepchem/issues/1816 if necessary
+  def __repr__(self):
+      return "<%s X.shape: %s, y.shape: %s, w.shape: %s, ids: %s, task_names: %s>" % (self.__class__.__name__, str(self.X.shape), str(self.y.shape), str(self.w.shape), self.ids.__repr__(), self.get_task_names())
+
+  def __str__(self):
+      return "<%s X.shape: %s, y.shape: %s, w.shape: %s, ids: %s, task_names: %s>" % (self.__class__.__name__, str(self.X.shape), str(self.y.shape), str(self.w.shape), self.ids.__repr__(), self.get_task_names())
+
   def iterbatches(self,
                   batch_size=None,
                   epoch=0,

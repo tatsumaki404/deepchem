@@ -88,4 +88,8 @@ datasets/sweet.csv.gz
 datasets/tox21-featurized/
 datasets/toxcast-featurized/
 datasets/toxcast_data.csv.gz
+datasets/gdb8.tar.gz
+datasets/qm8-featurized/
+datasets/qm8.sdf
+datasets/qm8.sdf.csv
 

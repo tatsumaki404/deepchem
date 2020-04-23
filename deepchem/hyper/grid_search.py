@@ -15,14 +15,20 @@ from deepchem.utils.evaluate import Evaluator
 
 class HyperparamOpt(object):
   """
-  Provides simple hyperparameter search capabilities.
+  Provides simple grid hyperparameter search capabilities.
   """
 
   def __init__(self, model_class):
+    """Initialize Hyperparameter Optimizer.
+
+    Parameters
+    ----------
+    model_class: class
+      A `dc.models.Model` subclass that will be used for the grid
+      optimization search.
+    """
     self.model_class = model_class
 
-  # TODO(rbharath): This function is complicated and monolithic. Is there a nice
-  # way to refactor this?
   def hyperparam_search(self,
                         params_dict,
                         train_dataset,
@@ -33,10 +39,27 @@ class HyperparamOpt(object):
                         logdir=None):
     """Perform hyperparams search according to params_dict.
 
-    Each key to hyperparams_dict is a model_param. The values should be a list
-    of potential values for that hyperparam.
+    Each key to hyperparams_dict is a model_param. The values should
+    be a list of potential values for that hyperparam.
 
-    TODO(rbharath): This shouldn't be stored in a temporary directory.
+    Parameters
+    ----------
+    params_dict: dict
+      dict including parameters and their initial values.
+    train_dataset: `dc.data.Dataset`
+      dataset used for training
+    valid_dataset: `dc.data.Dataset`
+      dataset used for validation(optimization on valid scores)
+    output_transformers: list of dc.trans.Transformer
+      transformers for evaluation
+    metric: list of dc.metrics.Metric
+      metric used for evaluation
+    use_max: bool, optional
+      If True, return the model with the highest score. Else return
+      model with the minimum score.
+    logdir: str, optional
+      The directory in which to store created models. If not set, will
+      use a temporary directory.
     """
     hyperparams = params_dict.keys()
     hyperparam_vals = params_dict.values()
