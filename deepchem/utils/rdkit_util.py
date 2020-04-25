@@ -10,10 +10,7 @@ properties of molecules.
 import os
 import logging
 import numpy as np
-try:
-  from StringIO import StringIO
-except ImportError:
-  from io import StringIO
+from io import StringIO
 from copy import deepcopy
 from collections import Counter
 from scipy.spatial.distance import cdist
@@ -53,7 +50,7 @@ def compute_pairwise_distances(first_xyz, second_xyz):
 
   pairwise_distances = cdist(first_xyz, second_xyz,
                              metric='euclidean')
-  return (pairwise_distances)
+  return pairwise_distances
 
 def get_xyz_from_mol(mol):
   """
@@ -69,18 +66,44 @@ def get_xyz_from_mol(mol):
     xyz[i, 2] = position.z
   return (xyz)
 
-
 def add_hydrogens_to_mol(mol):
   """
   Add hydrogens to a molecule object
-
-  TODO(rbharath) see if there are more flags to add here for default
 
   Parameters
   ----------
   mol: Rdkit Mol
     Molecule to hydrogenate
 
+  Returns
+  -------
+  Rdkit Mol
+  """
+  return apply_pdbfixer(mol, hydrogenate=True)
+
+
+def apply_pdbfixer(mol, add_missing=True, hydrogenate=True, pH=7.4,
+                   remove_heterogens=True, is_protein=True):
+  """
+  Apply PDBFixer to a molecule to try to clean it up.
+
+  Parameters
+  ----------
+  mol: Rdkit Mol
+    Molecule to hydrogenate
+  add_missing: bool, optional
+    If true, add in missing residues and atoms
+  hydrogenate: bool, optional
+    If true, add hydrogens at specified pH
+  pH: float, optional
+    The pH at which hydrogens will be added if `hydrogenate==True`. Set to 7.4 by default.
+  remove_heterogens: bool, optional
+    Often times, PDB files come with extra waters and salts attached.
+    If this field is set, remove these heterogens.
+  is_protein: bool, optional
+    If false, then don't remove heterogens (since this molecule is
+    itself a heterogen).
+  
   Returns
   -------
   Rdkit Mol
@@ -94,10 +117,15 @@ def add_hydrogens_to_mol(mol):
     pdb_stringio.seek(0)
     import pdbfixer
     fixer = pdbfixer.PDBFixer(pdbfile=pdb_stringio)
-    fixer.findMissingResidues()
-    fixer.findMissingAtoms()
-    fixer.addMissingAtoms()
-    fixer.addMissingHydrogens(7.4)
+    if add_missing:
+      fixer.findMissingResidues()
+      fixer.findMissingAtoms()
+      fixer.addMissingAtoms()
+    if hydrogenate:
+      fixer.addMissingHydrogens(pH)
+    if is_protein and remove_heterogens:
+      # False here specifies that water is to be removed
+      fixer.removeHeterogens(False)
 
     hydrogenated_io = StringIO()
     import simtk
@@ -107,7 +135,7 @@ def add_hydrogens_to_mol(mol):
     return Chem.MolFromPDBBlock(
         hydrogenated_io.read(), sanitize=False, removeHs=False)
   except ValueError as e:
-    logging.warning("Unable to add hydrogens %s", e)
+    logger.warning("Unable to add hydrogens %s", e)
     raise MoleculeLoadException(e)
   finally:
     try:
@@ -119,8 +147,8 @@ def add_hydrogens_to_mol(mol):
 def compute_charges(mol):
   """Attempt to compute Gasteiger Charges on Mol
 
-  This also has the side effect of calculating charges on mol.
-  The mol passed into this function has to already have been sanitized
+  This also has the side effect of calculating charges on mol.  The
+  mol passed into this function has to already have been sanitized
 
   Params
   ------
@@ -128,21 +156,62 @@ def compute_charges(mol):
 
   Returns
   -------
-  molecule with charges
+  No return since updates in place.
   """
   from rdkit.Chem import AllChem
   try:
+    # Updates charges in place
     AllChem.ComputeGasteigerCharges(mol)
   except Exception as e:
     logging.exception("Unable to compute charges for mol")
     raise MoleculeLoadException(e)
-  return mol
+
+def load_complex(molecular_complex,
+                 add_hydrogens=True,
+                 calc_charges=True,
+                 pdbfix=True,
+                 sanitize=True):
+  """Loads a molecular complex.
+
+  Given some representation of a molecular complex, returns a list of
+  tuples, where each tuple contains (xyz coords, rdkit object) for
+  that constituent molecule in the complex.
+
+  For now, assumes that molecular_complex is a tuple of filenames.
+
+  Parameters
+  ----------
+  molecular_complex: str
+    filename for molecule
+  add_hydrogens: bool, optional
+    If true, add hydrogens via pdbfixer
+  calc_charges: bool, optional
+    If true, add charges via rdkit
+  pdbfix: bool, optional
+    If true, apply pdbfixer to clean up this molecule.
+  sanitize: bool, optional
+    If true, sanitize molecules via rdkit
+
+  Returns
+  -------
+  List of tuples (xyz, mol)
+  """
+  fragments = []
+  for mol in molecular_complex:
+    fragments.append(load_molecule(mol,
+                                   add_hydrogens=add_hydrogens,
+                                   calc_charges=calc_charges,
+                                   pdbfix=pdbfix,
+                                   sanitize=sanitize))
+  return fragments
+    
 
 
 def load_molecule(molecule_file,
                   add_hydrogens=True,
                   calc_charges=True,
-                  sanitize=True):
+                  sanitize=True,
+                  pdbfix=True):
   """Converts molecule file to (xyz-coords, obmol object)
 
   Given molecule_file, returns a tuple of xyz coords of molecule
@@ -158,12 +227,15 @@ def load_molecule(molecule_file,
     If true, add charges via rdkit
   sanitize: bool, optional
     If true, sanitize molecules via rdkit
+  pdbfix: bool, optional
+    If true, apply pdbfixer to clean up this molecule.
 
   Returns
   -------
   Tuple (xyz, mol)
   """
   from rdkit import Chem
+  from_pdb = False
   if ".mol2" in molecule_file:
     my_mol = Chem.MolFromMol2File(molecule_file, sanitize=False, removeHs=False)
   elif ".sdf" in molecule_file:
@@ -173,9 +245,11 @@ def load_molecule(molecule_file,
     pdb_block = pdbqt_to_pdb(molecule_file)
     my_mol = Chem.MolFromPDBBlock(
         str(pdb_block), sanitize=False, removeHs=False)
+    from_pdb = True
   elif ".pdb" in molecule_file:
     my_mol = Chem.MolFromPDBFile(
         str(molecule_file), sanitize=False, removeHs=False)
+    from_pdb = True
   else:
     raise ValueError("Unrecognized file type")
 
@@ -183,13 +257,15 @@ def load_molecule(molecule_file,
     raise ValueError("Unable to read non None Molecule Object")
 
   if add_hydrogens or calc_charges:
-    my_mol = add_hydrogens_to_mol(my_mol)
+    # We assume if it's from a PDB, it should be a protein
+    my_mol = apply_pdbfixer(my_mol, hydrogenate=add_hydrogens, is_protein=from_pdb)
   if sanitize:
     try:
       Chem.SanitizeMol(my_mol)
     except AtomValenceException:
       logger.warn("Mol %s failed valence check" % Chem.MolToSmiles(my_mol))
   if calc_charges:
+    # This updates in place
     compute_charges(my_mol)
 
   xyz = get_xyz_from_mol(my_mol)
@@ -284,10 +360,64 @@ def merge_molecules_xyz(first_xyz, second_xyz):
   return np.array(np.vstack(np.vstack((first_xyz, second_xyz))))
 
 
-def merge_molecules(first, second):
+def merge_molecules(molecules):
   """Helper method to merge two molecules."""
   from rdkit.Chem import rdmolops
-  return rdmolops.CombineMols(first, second)
+  if len(molecules) <= 1:
+    return molecules
+  else:
+    combined = molecules[0]
+    for nextmol in molecules[1:]:
+      combined = rdmolops.CombineMols(combined, nextmol)
+    return combined
+
+def strip_hydrogens(coords, mol):
+  """Strip the hydrogens from input
+
+  Parameters
+  ----------
+  coords: Numpy ndarray
+    Must be of shape (N, 3) and correspond to coordinates of mol.
+  mol: Rdkit mol
+    The molecule to strip
+
+  Returns
+  -------
+  A tuple of (coords, mol-shim) where coords is a Numpy array of
+  coordinates with hydrogen coordinates. mol-shim is a shim object
+  which supports `GetAtoms()`. We use this since it's tricky to
+  directly get the indices of removed hydrogens with RDKit.
+  """
+  # TODO(rbharath): Why do I have these shims??
+  class MoleculeShim(object):
+    """
+    Shim of a Molecule which supports #GetAtoms()
+    """
+
+    def __init__(self, atoms):
+      self.atoms = [AtomShim(x) for x in atoms]
+
+    def GetAtoms(self):
+      return self.atoms
+
+  class AtomShim(object):
+
+    def __init__(self, atomic_num):
+      self.atomic_num = atomic_num
+
+    def GetAtomicNum(self):
+      return self.atomic_num
+
+  indexes_to_keep = []
+  atomic_numbers = []
+  for index, atom in enumerate(mol.GetAtoms()):
+    if atom.GetAtomicNum() != 1:
+      indexes_to_keep.append(index)
+      atomic_numbers.append(atom.GetAtomicNum())
+  mol = MoleculeShim(atomic_numbers)
+  coords = coords[indexes_to_keep]
+  return coords, mol
+
 
 
 class PdbqtLigandWriter(object):

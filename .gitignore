@@ -98,3 +98,4 @@ datasets/pdbbind_v2019_PN.tar.gz
 datasets/pdbbind_v2019_PP.tar.gz
 datasets/pdbbind_v2019_other_PL.tar.gz
 datasets/pdbbind_v2019_refined.tar.gz
+datasets/qm8.csv
