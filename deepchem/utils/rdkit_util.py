@@ -215,7 +215,7 @@ def load_molecule(molecule_file,
   """Converts molecule file to (xyz-coords, obmol object)
 
   Given molecule_file, returns a tuple of xyz coords of molecule
-  and an rdkit object representing that molecule
+  and an rdkit object representing that molecule.
 
   Parameters
   ----------
