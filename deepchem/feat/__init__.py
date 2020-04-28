@@ -25,3 +25,4 @@ from deepchem.feat.atomic_coordinates import AtomicConvFeaturizer
 from deepchem.feat.adjacency_fingerprints import AdjacencyFingerprint
 from deepchem.feat.smiles_featurizers import SmilesToSeq, SmilesToImage
 from deepchem.feat.contact_fingerprints import ContactCircularFingerprint
+from deepchem.feat.contact_fingerprints import ContactCircularVoxelizer
