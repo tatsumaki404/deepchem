@@ -453,6 +453,9 @@ class MolecularFragment(object):
   example, if two molecules form a molecular complex, it may be useful
   to create two fragments which represent the subsets of each molecule
   that's close to the other molecule (in the contact region).
+
+  Ideally, we'd be able to do this in RDKit direct, but manipulating
+  molecular fragments doesn't seem to be supported functionality. 
   """
 
   def __init__(self, atoms):
@@ -461,9 +464,10 @@ class MolecularFragment(object):
     Parameters
     ----------
     atoms: list
-      Each entry in this list should be an rdkit Atom object.
+      Each entry in this list should be an RdkitAtom
     """
-    self.atoms = [AtomShim(x) for x in atoms]
+    #self.atoms = [AtomShim(x) for x in atoms]
+    self.atoms = [AtomShim(x.GetAtomicNum(), get_partial_charge(x)) for x in atoms]
     #self.atoms = atoms 
 
   def GetAtoms(self):
@@ -483,18 +487,24 @@ class AtomShim(object):
   the basic information in an AtomShim seems to avoid issues.
   """
 
-  def __init__(self, atomic_num):
+  def __init__(self, atomic_num, partial_charge):
     """Initialize this object
 
     Parameters
     ----------
     atomic_num: int
       Atomic number for this atom.
+    partial_charge: float
+      The partial Gasteiger charge for this atom
     """
     self.atomic_num = atomic_num
+    self.partial_charge = partial_charge
 
   def GetAtomicNum(self):
     return self.atomic_num
+
+  def GetPartialCharge(self):
+    return self.partial_charge
 
 def get_mol_subset(coords, mol, atom_indices_to_keep):
   """Strip a subset of the atoms in this molecule
@@ -503,7 +513,7 @@ def get_mol_subset(coords, mol, atom_indices_to_keep):
   ----------
   coords: Numpy ndarray
     Must be of shape (N, 3) and correspond to coordinates of mol.
-  mol: Rdkit mol
+  mol: Rdkit mol or `MolecularFragment`
     The molecule to strip
   atom_indices_to_keep: list
     List of the indices of the atoms to keep. Each index is a unique
@@ -515,15 +525,18 @@ def get_mol_subset(coords, mol, atom_indices_to_keep):
   coordinates with hydrogen coordinates. mol_frag is a
   `MolecularFragment`. 
   """
-
+  from rdkit import Chem
   indexes_to_keep = []
   atoms_to_keep = []
+  #####################################################
+  # Compute partial charges on molecule if rdkit
+  if isinstance(mol, Chem.Mol):
+    compute_charges(mol)
+  #####################################################
   atoms = list(mol.GetAtoms())
   for index in atom_indices_to_keep:
     indexes_to_keep.append(index)
-    #atomic_numbers.append(atom.GetAtomicNum())
     atoms_to_keep.append(atoms[index])
-  #mol = MolecularFragment(atomic_numbers)
   mol_frag = MolecularFragment(atoms_to_keep)
   coords = coords[indexes_to_keep]
   return coords, mol_frag
@@ -859,8 +872,17 @@ def compute_centroid(coordinates):
 def subtract_centroid(xyz, centroid):
   """Subtracts centroid from each coordinate.
 
-  Subtracts the centroid, a numpy array of dim 3, from all coordinates of all
-  atoms in the molecule
+  Subtracts the centroid, a numpy array of dim 3, from all coordinates
+  of all atoms in the molecule
+
+  Note that this update is made in place to the array it's applied to.
+
+  Parameters
+  ----------
+  xyz: numpy array
+    Of shape `(N, 3)`
+  centroid: numpy array
+    Of shape `(3,)`
   """
   xyz -= np.transpose(centroid)
   return (xyz)
@@ -943,14 +965,24 @@ def rotate_molecules(mol_coordinates_list):
   return (rotated_coordinates_list)
 
 def get_partial_charge(atom):
-  """Get partial charge of a given atom (rdkit Atom object)"""
-  try:
-    value = atom.GetProp(str("_GasteigerCharge"))
-    if value == '-nan':
+  """Get partial charge of a given atom (rdkit Atom object)
+  
+  Parameters
+  ----------
+  atom: rdkit atom or `AtomShim` object
+    Either an rdkit atom or `AtomShim`
+  """
+  from rdkit import Chem
+  if isinstance(atom, Chem.Atom):
+    try:
+      value = atom.GetProp(str("_GasteigerCharge"))
+      if value == '-nan':
+        return 0
+      return float(value)
+    except KeyError:
       return 0
-    return float(value)
-  except KeyError:
-    return 0
+  else:
+    return atom.GetPartialCharge()
 
 def is_salt_bridge(atom_i, atom_j):
   """Check if two atoms have correct charges to form a salt bridge"""

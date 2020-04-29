@@ -26,3 +26,6 @@ from deepchem.feat.adjacency_fingerprints import AdjacencyFingerprint
 from deepchem.feat.smiles_featurizers import SmilesToSeq, SmilesToImage
 from deepchem.feat.contact_fingerprints import ContactCircularFingerprint
 from deepchem.feat.contact_fingerprints import ContactCircularVoxelizer
+from deepchem.feat.grid_featurizers import ChargeVoxelizer 
+from deepchem.feat.grid_featurizers import SaltBridgeVoxelizer
+from deepchem.feat.grid_featurizers import CationPiVoxelizer

@@ -11,7 +11,9 @@ def convert_atom_to_voxel(molecule_xyz,
                           voxel_width):
   """Converts atom coordinates to an i,j,k grid index.
 
-  TODO(rbharath): Why does this make sense? It offsets the molecule atom coordinates by (box_width/2, box_width/2, box_width/2). Shouldn't there be a box center specified? Well, I guess if you're at 0,0,0, then you're shifted to the center of the voxel box.
+  This function offsets the molecule atom coordinates by (box_width/2,
+  box_width/2, box_width/2) and then divides by voxel_width to compute
+  the voxel indices.
 
   Parameters:
   -----------
@@ -65,6 +67,7 @@ def voxelize(get_voxels,
   This helper function helps convert a hash function which
   specifies spatial features of a molecular complex into a voxel
   tensor.
+
   Parameters
   ----------
   get_voxels: function
